@@ -44,10 +44,12 @@ STATUS = re.compile(
 )
 TIERS = {"live", "contract", "mock", "n/a (pure)", "-"}
 #: Which tiers a status can carry. `implemented` needs evidence that counts (CONF-2),
-#: `provisional` is exactly the mock-only case, and an `n/a` row has nothing to grade.
+#: `provisional` is exactly the mock-only case, a `delegated` row's tier lives on the core's
+#: row, and an `n/a` row has nothing to grade.
 ALLOWED = {
     "implemented": {"live", "contract", "n/a (pure)"},
     "provisional": {"mock"},
+    "delegated": {"-"},
     "n/a": {"-"},
 }
 NOT_GREEN = ("partial", "not implemented", "held")
