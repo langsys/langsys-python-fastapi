@@ -28,7 +28,10 @@ def configure(
     """Configure Langsys (typically in a FastAPI startup handler).
 
     Any value left as ``None`` falls back to the ``LANGSYS_*`` environment variable, so
-    calling this is optional if you configure entirely through the environment.
+    calling this is optional if you configure entirely through the environment. Every
+    option is the core client's own, passed through unchanged; ``api_url`` (or
+    ``LANGSYS_API_URL``) points the client at a test double. Calling this again rebuilds
+    the client, so a later call takes effect even after the first translation.
     """
     global _config
     _config = {
@@ -49,7 +52,8 @@ def configure(
 
 def get_client() -> LangsysClient:
     """Return the process-wide client (built once). Locale comes from the request-scoped
-    context variable, so the shared instance is safe across concurrent requests."""
+    context variable, so the shared instance is safe across concurrent requests. Every
+    other option is the core's default — this binding does not schedule sends."""
     global _client
     if _client is None:
         with _lock:
@@ -66,10 +70,21 @@ def set_client(client: LangsysClient) -> None:
 
 
 def reset_client() -> None:
+    """Retire the shared client, handing its queue to the core first.
+
+    The client's execution context ends here, so whatever it still holds goes to the
+    core's ``flush_pending()`` — registered, held or discarded as the server decides —
+    rather than being closed away unsent (REG-3).
+    """
     global _client
-    if _client is not None:
-        _client.close()
-    _client = None
+    with _lock:
+        client, _client = _client, None
+    if client is None:
+        return
+    try:
+        client.flush_pending()
+    finally:
+        client.close()
 
 
 def t(phrase: str, category: Optional[str] = None, **params: Any) -> str:
@@ -77,6 +92,11 @@ def t(phrase: str, category: Optional[str] = None, **params: Any) -> str:
 
     Safe to call directly from a synchronous ``def`` endpoint/dependency — FastAPI runs
     those in a threadpool. From an ``async def`` endpoint, prefer :func:`at`.
+
+    ``phrase`` and ``category`` are this function's own arguments, so a placeholder with
+    either name cannot be passed as a keyword here — ``category=`` is taken as the
+    category. For those, call the core directly:
+    ``get_langsys().translate(phrase, category=..., params={"category": ...})``.
     """
     return get_client().translate(phrase, category=category, params=params or None)
 

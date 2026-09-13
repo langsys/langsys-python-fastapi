@@ -1,23 +1,32 @@
-"""Request-locale ASGI middleware.
+"""Request-locale ASGI middleware — and the request boundary the core cannot see.
 
-Resolves the locale per request (``?locale=`` -> ``langsys_locale`` cookie ->
-``Accept-Language``), exposes it to translations for the duration of the request via the
-context variable, and — with a write key and ``auto_flush`` on — registers phrases
-discovered while handling the request afterwards (dropping the queue on a read key so a
-long-running server never accumulates it).
+For each HTTP request it:
 
-Implemented as raw ASGI (not ``BaseHTTPMiddleware``) so the context variable set here
-reliably propagates into the endpoint.
+1. resolves the locale (``?locale=`` -> ``langsys_locale`` cookie -> ``Accept-Language``),
+   matching each candidate through the core's ``detect_preferred_locale`` against
+   ``supported``, and exposes it to translations via the request-scoped context variable;
+2. once the app has returned — its response already sent — hands whatever the request
+   queued to the core's public ``flush_pending()``. Whether that registers, holds (the
+   capability could not be determined) or discards (the server said no) is the core's
+   decision, taken at its send site: this middleware never reads or branches on
+   capability;
+3. forgets the observed write decision with ``reset_write_decision()``, so it cannot
+   outlive the request.
+
+Raw ASGI rather than ``BaseHTTPMiddleware``, so the context variable set here reliably
+propagates into the endpoint, and so "the app has returned" means the final response
+message has been sent.
 """
 
 from __future__ import annotations
 
+import contextlib
 import logging
-from http.cookies import SimpleCookie
+from http.cookies import CookieError, SimpleCookie
 from typing import Any, Optional, Sequence
 from urllib.parse import parse_qs
 
-from langsys import canonicalize_locale
+from langsys import LangsysClient
 from starlette.concurrency import run_in_threadpool
 
 from .client import get_client
@@ -29,67 +38,80 @@ logger = logging.getLogger("langsys")
 class LangsysMiddleware:
     def __init__(
         self,
-        app: object,
+        app: Any,
         *,
         query_param: str = "locale",
         cookie_name: str = "langsys_locale",
         supported: Optional[Sequence[str]] = None,
-        auto_flush: bool = True,
     ) -> None:
         self.app = app
         self.query_param = query_param
         self.cookie_name = cookie_name
         self.supported = list(supported) if supported else []
-        self.auto_flush = auto_flush
 
-    async def __call__(self, scope: dict[str, Any], receive: object, send: object) -> None:
+    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
         if scope.get("type") != "http":
-            await self.app(scope, receive, send)  # type: ignore[operator]
+            await self.app(scope, receive, send)
             return
 
         client = get_client()
         locale = self._resolve(scope, client)
         token = set_current_locale(locale) if locale else None
+        completed = False
         try:
-            await self.app(scope, receive, send)  # type: ignore[operator]
+            await self.app(scope, receive, send)
+            completed = True
         finally:
             if token is not None:
                 reset_current_locale(token)
-        await self._handle_pending(client)
+            try:
+                # A request that raised is left to the next request's flush (or the
+                # core's exit flush): flushing here would run before the error response
+                # an outer middleware has yet to send, on the visitor's time.
+                if completed:
+                    await self._flush(client)
+            finally:
+                # GATE-3 — the request is the boundary, and only this layer can see it.
+                client.reset_write_decision()
 
-    def _resolve(self, scope: dict[str, Any], client: object) -> str:
-        headers = {k.decode().lower(): v.decode() for k, v in scope.get("headers") or []}
-
-        query = parse_qs(scope.get("query_string", b"").decode())
-        explicit = query.get(self.query_param, [None])[0]
-        if explicit:
-            return canonicalize_locale(explicit)
-
-        cookie_header = headers.get("cookie")
-        if cookie_header:
-            jar: SimpleCookie = SimpleCookie()
-            jar.load(cookie_header)
-            morsel = jar.get(self.cookie_name)
-            if morsel and morsel.value:
-                return canonicalize_locale(morsel.value)
-
-        detected = client.detect_preferred_locale(  # type: ignore[attr-defined]
-            headers.get("accept-language"), self.supported or None
-        )
-        return detected or ""
-
-    async def _handle_pending(self, client: object) -> None:
-        if not client.has_pending:  # type: ignore[attr-defined]
+    async def _flush(self, client: LangsysClient) -> None:
+        # REG-3 / SRV-3 — the end of this request's context, after its response was sent.
+        # Most requests queue nothing, so skip the threadpool hop for those.
+        if not client.has_pending:
             return
         try:
-            await run_in_threadpool(self._flush_or_clear, client)
-        except Exception as exc:  # pragma: no cover - never break the response
-            logger.warning("langsys: flushing pending registrations failed: %s", exc)
+            await run_in_threadpool(client.flush_pending)
+        except Exception as exc:  # the response is already out; never raise past it
+            logger.warning("langsys: flushing at the end of the request failed: %s", exc)
 
-    def _flush_or_clear(self, client: object) -> None:
-        # Register on write keys (when enabled); otherwise drop the queue so it doesn't
-        # grow unbounded on a long-running read-key server.
-        if self.auto_flush and client.can_write:  # type: ignore[attr-defined]
-            client.flush_pending()  # type: ignore[attr-defined]
-        else:
-            client.clear_pending()  # type: ignore[attr-defined]
+    def _resolve(self, scope: dict[str, Any], client: LangsysClient) -> str:
+        # Header bytes are latin-1 on the wire: decoding them as UTF-8 raised on any
+        # non-UTF-8 byte and turned the whole request into a 500.
+        headers = {
+            name.decode("latin-1").lower(): value.decode("latin-1")
+            for name, value in scope.get("headers") or []
+        }
+        query = parse_qs(scope.get("query_string", b"").decode("latin-1"))
+
+        cookie: Optional[str] = None
+        if headers.get("cookie"):
+            jar: SimpleCookie = SimpleCookie()
+            with contextlib.suppress(CookieError):
+                jar.load(headers["cookie"])
+            morsel = jar.get(self.cookie_name)
+            cookie = morsel.value if morsel else None
+
+        # Every candidate goes through the same core matcher, so `supported` constrains
+        # an explicit choice exactly as it constrains Accept-Language — an unsupported
+        # value falls through rather than reaching the API as a locale.
+        candidates = (
+            query.get(self.query_param, [None])[0],
+            cookie,
+            headers.get("accept-language"),
+        )
+        for candidate in candidates:
+            if candidate:
+                match = client.detect_preferred_locale(candidate, self.supported or None)
+                if match:
+                    return match
+        return ""

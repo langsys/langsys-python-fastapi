@@ -49,7 +49,7 @@ target-version = "py39"
 select = ["E", "F", "I", "B", "SIM", "C4"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["E501"]
+"tests/*" = ["E501", "B008"]  # B008: FastAPI's Depends() idiom
 
 [tool.mypy]
 strict = true
@@ -60,3 +60,6 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "integration: talks to a live Langsys stack; skipped unless LANGSYS_* is set (select with -m integration)",
+]
