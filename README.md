@@ -62,8 +62,8 @@ def countries(langsys: LangsysClient = Depends(get_langsys), loc: str = Depends(
 
 ## How the locale is resolved
 
-`LangsysMiddleware` asks the base SDK which locale to serve, in order: the URL's `?locale=`, then
-the `langsys_locale` cookie, then `Accept-Language`, and otherwise the project's base locale.
+`LangsysMiddleware` asks the base SDK which locale to serve, in order: the URL — the path
+segment, subdomain or `?locale=` your app routes by — then the `langsys_locale` cookie, then `Accept-Language`, and otherwise the project's base locale.
 Every candidate is checked against the locales the project serves — its base and target
 locales — and an unsupported one is skipped. The middleware never writes the cookie; your app
 owns it.
@@ -184,9 +184,16 @@ Every option is the base SDK's own, passed through unchanged. Calling `configure
 rebuilds the client — flushing the old client's queue first — so a later `api_url` takes
 effect even after the first translation.
 
-Middleware options only say where in a request your app keeps the locale: `query_param`
-(default `locale`) and `cookie_name` (default `langsys_locale`; `None` when the app keeps no locale
-cookie, so no response varies on one).
+Middleware options only say where in a request your app keeps the locale:
+
+| Option | Default | |
+|---|---|---|
+| `path_segment` | `None` | index of the path segment holding the locale — `0` for `/es/pricing` |
+| `subdomain` | `False` | the host's first label holds the locale — `es.example.com` |
+| `query_param` | `locale` | query parameter holding the locale |
+| `cookie_name` | `langsys_locale` | cookie holding the locale; `None` when the app keeps none, so no response varies on one |
+
+The URL's locale is the first of `path_segment`, `subdomain` and `query_param` present.
 
 If you install your own client with `set_client()`, build it with
 `locale_source=langsys_fastapi.locale.ContextVarLocaleSource()` so it reads the request

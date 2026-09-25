@@ -76,6 +76,8 @@ F = TypeVar("F", bound=Callable[..., Any])
 FAILED = ("validation_failed", "The request failed validation.")
 BODY_REQUIRED = ("required", "The request body is required.")
 BODY_NOT_JSON = ("invalid_format", "The request body must be valid JSON.")
+BODY_NOT_OBJECT = ("invalid_type", "The request body must be an object.")
+_OBJECT_KINDS = ("model_type", "model_attributes_type", "dict_type")
 GENERIC = ("invalid", "The :attribute is invalid.")
 EMAIL = ("invalid_format", "The :attribute must be a valid email address.")
 
@@ -86,7 +88,7 @@ _PLAIN: dict[str, tuple[str, str]] = {
     "string_pattern_mismatch": ("invalid_format", "The :attribute format is invalid."),
     "enum": ("invalid_option", "The selected :attribute is invalid."),
     "literal_error": ("invalid_option", "The selected :attribute is invalid."),
-    "extra_forbidden": ("not_allowed", "The :attribute is not allowed."),
+    "extra_forbidden": ("not_allowed", "This field is not allowed."),
 }
 for _kind in ("int_type", "int_parsing", "int_from_float"):
     _PLAIN[_kind] = ("invalid_type", "The :attribute must be a whole number.")
@@ -217,7 +219,12 @@ def entries_from_errors(
             code, template = BODY_NOT_JSON
             field = ""
         elif not path:
-            code, template = BODY_REQUIRED if kind == "missing" else FAILED
+            if kind == "missing":
+                code, template = BODY_REQUIRED
+            elif kind in _OBJECT_KINDS:
+                code, template = BODY_NOT_OBJECT
+            else:
+                code, template = FAILED
         else:
             label, annotation = _describe(root, loc if isinstance(root, Mapping) else path)
             code, template, params = _rule(kind, dict(error.get("ctx") or {}), label, annotation)
@@ -385,7 +392,7 @@ def declared_templates(app: FastAPI) -> Iterator[Declared]:
 
         # python -m langsys.messages --provider myapp.langsys:templates [--register]
     """
-    for _, template in (FAILED, BODY_REQUIRED, BODY_NOT_JSON):
+    for _, template in (FAILED, BODY_REQUIRED, BODY_NOT_JSON, BODY_NOT_OBJECT):
         yield {"template": template, "source": "langsys_fastapi"}
     seen: set[Any] = set()
     for route in app.routes:
@@ -413,6 +420,8 @@ def _model_templates(model: Any, prefix: str, where: str, seen: set[Any]) -> Ite
         return
     seen.add((model, prefix))
     source = f"{where} {model.__name__}"
+    if model.model_config.get("extra") == "forbid":
+        yield {"template": _PLAIN["extra_forbidden"][1], "source": source}
     for name, info in model.model_fields.items():
         path = f"{prefix}.{info.alias or name}" if prefix else (info.alias or name)
         yield from _field_templates(info, info.annotation, path, source, where, seen)

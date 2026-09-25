@@ -185,9 +185,8 @@ MUTATIONS = [
         "give the middleware the 29bb650 auto_flush option back",
         f"{PKG}/middleware.py",
         [(
-            '        cookie_name: Optional[str] = "langsys_locale",\n    ) -> None:\n',
-            '        cookie_name: Optional[str] = "langsys_locale",\n'
-            "        auto_flush: bool = True,\n    ) -> None:\n",
+            "        subdomain: bool = False,\n    ) -> None:\n",
+            "        subdomain: bool = False,\n        auto_flush: bool = True,\n    ) -> None:\n",
         )],
         [f"{PROBES}::test_BIND4_the_middleware_introduces_only_request_shape_options"],
     ),
@@ -249,6 +248,20 @@ MUTATIONS = [
     ),
     Mutation(
         "SRV-6",
+        "ignore the path segment the app routes by",
+        f"{PKG}/middleware.py",
+        [("        if self.path_segment is not None:\n", "        if False:\n")],
+        [f"{CONTRACT}::test_SRV6_a_path_segment_the_app_routes_by_is_the_url_step"],
+    ),
+    Mutation(
+        "SRV-6",
+        "ignore the subdomain the app routes by",
+        f"{PKG}/middleware.py",
+        [("        if self.subdomain:\n", "        if False:\n")],
+        [f"{CONTRACT}::test_SRV6_a_subdomain_the_app_routes_by_is_the_url_step"],
+    ),
+    Mutation(
+        "SRV-6",
         "never offer the cookie as a candidate",
         f"{PKG}/middleware.py",
         [("            cookie=cookie,\n", "            cookie=None,\n")],
@@ -267,6 +280,19 @@ MUTATIONS = [
             f"{MESSAGES}::test_MSG9_entries_are_built_from_the_failed_rules",
             f"{MESSAGES}::test_MSG9_the_canonical_reference_entry_is_what_a_failed_min_length_produces",
             f"{MESSAGES}::test_MSG2_codes_come_from_the_vocabulary_and_size_codes_follow_the_field_type",
+        ],
+    ),
+    Mutation(
+        "MSG-2",
+        "word an extra field with its label instead of the spec table's sentence",
+        f"{PKG}/messages.py",
+        [(
+            '    "extra_forbidden": ("not_allowed", "This field is not allowed."),\n',
+            '    "extra_forbidden": ("not_allowed", "The :attribute is not allowed."),\n',
+        )],
+        [
+            f"{MESSAGES}::test_MSG2_the_spec_table_words_lt_extra_fields_and_objects",
+            f"{MESSAGES}::test_MSG7_the_listing_covers_the_spec_table_templates",
         ],
     ),
     Mutation(

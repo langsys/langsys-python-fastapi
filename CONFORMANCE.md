@@ -2,19 +2,19 @@
 
 | | |
 |---|---|
-| **Spec revision read** | langsys2 a1b7568c…, docs/sdk-spec.mdx blob b0474afba2c9c1639baa8da219fa6a441b3e1c2f |
-| **Profiles** | server, binding — the spec's per-SDK table row for `langsys-python-fastapi`, over core `langsys-python` |
+| **Spec revision read** | langsys2 cd5468c7…, docs/sdk-spec.mdx blob abe122cf5346f92a0474b627d49451e6de9cd761 |
+| **Profiles** | server, binding — derived: binding over langsys-python |
 | **SDK** | `langsys-fastapi`, the FastAPI/Starlette binding |
-| **specVersion** | 8.2.12 |
+| **specVersion** | 8.2.13 |
 | **SDK revision** | `feature/838_write_key_gating`, cut from `main` `29bb650` |
 | **Core revision** | `langsys-python` `8575631a1296e7ca694c9badd786aa880829a4a3`, as a clean `git archive` — see *Reproducing* |
 | **Contract fixture** | `tests/contract-fixture/`, tree `542f57f5ffcb9038db1b7411152b7e31b96cb269`, vendored byte-exact with the core's harness `tests/contract.py` |
 | **Published** | Never — PyPI and TestPyPI both 404 (positive control: `httpx` → 200) |
-| **Suite** | 114 passed by default, the contract tests included; 5 live under `pytest -m integration`, all passing against the local stack |
+| **Suite** | 122 passed by default, the contract tests included; 5 live under `pytest -m integration`, all passing against the local stack |
 
-Spec version implemented: **v8.2.12**, blob `b0474afba2c9c1639baa8da219fa6a441b3e1c2f`. The blob is
+Spec version implemented: **v8.2.13**, blob `abe122cf5346f92a0474b627d49451e6de9cd761`. The blob is
 re-derived on every write of this file, from the commit rather than a branch:
-`git -C ~/Documents/dev/langsys2 rev-parse a1b7568c7ebcc53d074d30665e2195c122ea6978:docs/sdk-spec.mdx`.
+`git -C ~/Documents/dev/langsys2 rev-parse cd5468c765c67764a0e08c434d41413ead3678dc:docs/sdk-spec.mdx`.
 `_dev_/conformance_counts.py` refuses to count if it moves. No per-rule revision is recorded:
 the blob citation is complete without one.
 
@@ -76,9 +76,9 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 | Status | Count | |
 |---|---|---|
 | `implemented` | 23 | 3 `live` (REG-3, SRV-1, CONF-1) · 2 `contract` (SRV-3, SRV-6) · 18 `n/a (pure)` |
-| `delegated` | 63 | graded on the core's rows — see gaps |
+| `delegated` | 64 | graded on the core's rows — see gaps |
 | `n/a (profile: browser)` | 21 | |
-| `n/a (architecture: …)` | 6 | GATE-10, HINT-13, SRV-4, SRV-5, MSG-12, SNAP-2 |
+| `n/a (architecture: …)` | 5 | GATE-10, HINT-13, SRV-4, SRV-5, MSG-12 |
 | **total** | **113** | |
 
 ## Status
@@ -152,9 +152,9 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 | SRV-3 | implemented | contract | The middleware opens the core's request scope at request start and ends it once the final response body has been sent, then flushes; while the scope is open, no flush sends the request's misses. Order of events: `test_SRV3_REG3_registration_happens_after_the_response_is_sent`; `test_SRV3_a_slow_handler_sends_nothing_before_its_response`, whose handler outlives the core's 400ms debounce; `test_SRV3_another_request_s_flush_sends_nothing_before_this_response`, where a concurrent request finishes first; `test_SRV3_a_request_that_raised_releases_its_misses_after_the_error_response`, ordered by the core's debounce. Read-only half, with CONF-2's drift: `test_contract.py::test_SRV3_a_session_that_may_not_write_pushes_nothing_even_once_the_world_would_accept` — an `ip_write` session not allow-listed pushes nothing, the double's allow-list then widens and the state stays empty, and in the drifted world a request that may write registers its own miss. Write acceptance, live: `test_LIVE_SRV3_REG3_…[CONTROL-write-key-on-the-same-render-pushes]`. Mutations: releasing and flushing before the body, never opening the scope, and leaving a raised request's scope open each redden their named tests |
 | SRV-4 | n/a (architecture: this binding performs no hydration hand-off because FastAPI responses are terminal, as the spec's per-SDK table records, live if the binding ships a client entry or template integration that hydrates) | - | No client renders against a FastAPI response |
 | SRV-5 | n/a (architecture: FastAPI has no component model, so this binding renders no children to capture, live if a template-component integration is added) | - | The core's DOM walker is reachable only through the DI client, where it is the core's row |
-| SRV-6 | implemented | contract | The middleware asks the core's `resolve_request_locale` for the locale — the URL's `?locale=`, then the locale cookie, then `Accept-Language`, then the project's base locale, each validated against the project's locales — merges the returned `Vary` into the app's own, and never writes a cookie. The query-parameter and cookie names are wiring; `cookie_name=None` declares that the app keeps no locale cookie. Against the double serving en-us, it-it and es-es: `test_contract.py::test_SRV6_one_url_resolves_url_then_cookie_then_header_each_validated` — the URL wins over a conflicting cookie and header with no `Vary`; a cookie wins with `Vary: Cookie`; a header alone is negotiated with `Vary` naming `Accept-Language`; an unsupported cookie falls through to the header and is not re-set; an unsupported URL locale falls through to the base. `test_SRV6_vary_is_merged_into_the_apps_own` and `test_SRV6_an_app_with_no_locale_cookie_does_not_vary_on_one`. Mutations: never sending `Vary`, replacing the app's `Vary`, and never offering the cookie each redden their named tests |
+| SRV-6 | implemented | contract | The middleware asks the core's `resolve_request_locale` for the locale — the URL, then the locale cookie, then `Accept-Language`, then the project's base locale, each validated against the project's locales — merges the returned `Vary` into the app's own, and never writes a cookie. The URL step is whichever the app routes by: a path segment (`path_segment=`), the subdomain (`subdomain=True`) or the query parameter, the first present; with the cookie name these are wiring, and `cookie_name=None` declares that the app keeps no locale cookie. Against the double serving en-us, it-it and es-es: `test_contract.py::test_SRV6_one_url_resolves_url_then_cookie_then_header_each_validated` — the URL wins over a conflicting cookie and header with no `Vary`; a cookie wins with `Vary: Cookie`; a header alone is negotiated with `Vary` naming `Accept-Language`; an unsupported cookie falls through to the header and is not re-set; an unsupported URL locale falls through to the base. `test_SRV6_a_path_segment_the_app_routes_by_is_the_url_step` and `test_SRV6_a_subdomain_the_app_routes_by_is_the_url_step`, each against a conflicting cookie and header; `test_SRV6_vary_is_merged_into_the_apps_own`; `test_SRV6_an_app_with_no_locale_cookie_does_not_vary_on_one`. Mutations: never sending `Vary`, replacing the app's `Vary`, ignoring the path segment, ignoring the subdomain and never offering the cookie each redden their named tests |
 | MSG-1 | implemented | n/a (pure) | `install(app)` answers a failed validation with the default langsys envelope, `{status: false, error: {code, message, template, errors: [entry, …]}}`, each entry `{field?, code, message, template, params?}` built by the core's constructor. `test_messages.py::test_MSG1_the_default_envelope_resolves_through_the_core_as_the_reference_does` resolves it through the core's `resolve_server_messages` exactly as the vector file's `langsys-envelope-validation` resolves; `test_MSG1_MSG4_every_entry_has_the_canonical_shape_and_message_is_the_filled_template` checks key order |
-| MSG-2 | implemented | n/a (pure) | Codes come from the wording table, each in the shared vocabulary, and a size rule's code is the core's `size_code` for the field's type. `test_MSG2_codes_come_from_the_vocabulary_and_size_codes_follow_the_field_type`: text `too_short`, number `too_small`, list `too_many` |
+| MSG-2 | implemented | n/a (pure) | Codes come from the wording table, each in the shared vocabulary, and a size rule's code is the core's `size_code` for the field's type. `test_MSG2_codes_come_from_the_vocabulary_and_size_codes_follow_the_field_type`: text `too_short`, number `too_small`, list `too_many`. The spec's table for failures the reference's rules do not produce is used verbatim: `test_MSG2_the_spec_table_words_lt_extra_fields_and_objects` (`lt`, an extra field, an object type) and `test_MSG1_MSG2_a_whole_request_failure_carries_no_field` (missing body, invalid JSON, a body that is not an object, each with no `field`). Mutation: wording an extra field with its label reddens 2 named tests |
 | MSG-3 | implemented | n/a (pure) | Every template is a whole sentence with the field's label written in, worded as the langsys4 reference's `RuleWording`; markers carry only numbers and dates. `test_MSG3_labels_are_written_in_and_markers_hold_only_values` runs each emitted template through the core's `check_template` |
 | MSG-4 | implemented | n/a (pure) | `test_MSG1_MSG4_every_entry_has_the_canonical_shape_and_message_is_the_filled_template`: `fill(template, params)` reproduces `message` for every entry, numbers are JSON numbers, and `params` is present exactly when the template has markers. `test_MSG9_the_canonical_reference_entry_is_what_a_failed_min_length_produces`: a failed `min_length=12` yields the vector file's canonical `too_short` entry byte for byte |
 | MSG-5 | delegated | - | Core: no core row yet. Probe `test_ABSENCE[MSG-5]`: this package renders no entry, 0 here, 1 in core. An app renders an entry through the core client's `render_server_message`, reachable through DI |
@@ -175,12 +175,12 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 | MIG-8 | delegated | - | Core: no core row yet. Probe `test_ABSENCE[MIG-8]`: 0 here, 7 in core |
 | MIG-9 | delegated | - | Core: no core row yet. Probe `test_ABSENCE[MIG-9]`: 0 here, 7 in core |
 | SNAP-1 | delegated | - | Core: no core row yet. Probe `test_ABSENCE[SNAP-1]`: no export here, 0 here, 0 in core |
-| SNAP-2 | n/a (architecture: a FastAPI response is rendered on the server per request, and nothing in this binding seeds a client before a first render, live if the binding adds a preload hook) | - | The core's catalog cache is what a server render reads |
+| SNAP-2 | delegated | - | Core: no core row yet. Probe `test_ABSENCE[SNAP-2]`: no snapshot is loaded here, 0 here, 0 in core. A server binding seeds the core's catalog from a snapshot at startup; this row waits on the core's snapshot loader, and startup seeding is wired and graded here when it lands |
 | SNAP-3 | delegated | - | Core: no core row yet. Probe `test_ABSENCE[SNAP-3]`: no snapshot is read or written here, 0 here, 0 in core |
 | BIND-1 | implemented | n/a (pure) | Shape and timing only, tested by running the spec's first heuristic. `test_BIND1_deleting_the_binding_changes_nothing_but_shape`: the same vectors through `t()`, through `at()` and directly through the core give identical text and identical queues. `at()` is a threadpool shape adapter; the validation handler is framework adaptation — Pydantic's failed rules and labels into the core's entry. Mutation: `t()` dropping the category reddens it. Known shape limit: see gaps |
 | BIND-2 | implemented | n/a (pure) | `test_ABSENCE[BIND-2]`: no capability name in this package's code, 0 here, 59 in core; the firing control is the `29bb650` end-of-request branch verbatim. Behaviour: `test_BIND2_GATE2_an_unknown_capability_holds_the_queue_through_the_middleware`. Mutation: restoring the branch reddens 3 named tests |
 | BIND-3 | implemented | n/a (pure) | `test_ABSENCE[BIND-3]`: no transport, timer, sleep, retry, backoff, header or `debounce` in this package's code, 0 here, 34 in core. The end-of-request flush and the request scope are lifecycle calls into the core, not schedules. Firing control: a client built with `debounce=None`. Mutation: building the shared client that way reddens this probe and REG-2's |
-| BIND-4 | implemented | n/a (pure) | `test_BIND4_configure_introduces_no_option_the_core_does_not_define`: every `configure()` option is a `LangsysClient` option. `test_BIND4_the_middleware_introduces_only_request_shape_options`: the middleware takes only `query_param` and `cookie_name` — SRV-6's wiring, where the app keeps a value the core defines. Firing controls: the `29bb650` signature with `auto_flush` and `supported`, and a `discovery` option. Mutation: restoring `auto_flush` reddens it |
+| BIND-4 | implemented | n/a (pure) | `test_BIND4_configure_introduces_no_option_the_core_does_not_define`: every `configure()` option is a `LangsysClient` option. `test_BIND4_the_middleware_introduces_only_request_shape_options`: the middleware takes only `path_segment`, `subdomain`, `query_param` and `cookie_name` — SRV-6's wiring, where the app keeps a value the core defines. Firing controls: the `29bb650` signature with `auto_flush` and `supported`, and a `discovery` option. Mutation: restoring `auto_flush` reddens it |
 | BIND-5 | implemented | n/a (pure) | `test_ABSENCE[BIND-5]`: nothing memoized in front of `t()`, 0 here, 7 in core. Mutation: `lru_cache` on `t()` reddens it |
 | BIND-6 | implemented | n/a (pure) | `test_BIND6_nothing_exported_shadows_a_core_name_with_something_else` and `test_BIND6_DI_hands_out_the_core_client_itself`: DI returns the core `LangsysClient` itself. The other exported names are framework idioms — the middleware, `t`/`at` over the shared client, DI providers, request-locale accessors — and `langsys_fastapi.messages` adds only the Pydantic side of the entry the core defines. Mutation: exporting a reimplemented core name reddens it |
 | GRANT-1 | n/a (profile: browser) | - | A server binding holds a key, not a grant. No header is set here (`test_ABSENCE[WIRE-1]`) |
@@ -197,14 +197,14 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 | WIRE-5 | implemented | n/a (pure) | `test_WIRE5_configure_redirects_the_api_base_even_after_first_use`: requests arrive at one double, then at a second after `configure()` is called again once the client has been used. `test_WIRE5_the_seam_is_findable_where_an_integrator_looks`: the README's Configuration section names `api_url` and `LANGSYS_API_URL`, and so does the `configure()` docstring. The contract tests reach the shared double through this seam. Mutation: `configure()` not rebuilding the client reddens the first |
 | CONF-1 | implemented | live | Every row whose property depends on what the API answers is proven against a server that can say no, asserting what it accepted: REG-3 and SRV-1 live; SRV-3, SRV-6 and MSG-8's evidence against the contract double, with drift for the absence. Every path: SRV-1 is proven on sync `t()`, async `at()` and DI. The mock-backed unit tests beside them are supporting evidence, not the grade |
 | CONF-2 | implemented | n/a (pure) | Every row carries a tier, and `_dev_/conformance_counts.py` rejects a tier its status cannot carry, including anything but `-` on a delegated row. The shared contract fixture is vendored by tree id (`542f57f5`) and reached through WIRE-5's seam; the one absence proven here drifts the capability and carries its control (SRV-3). `live` evidence comes from a committed, idempotent seeder |
-| CONF-3 | implemented | n/a (pure) | `_dev_/mutations.py`: 21 mutations across every implemented row that running something can break. Each must redden its named tests against a green baseline, and the tree is restored byte-for-byte afterwards; all 21 redden against core `8575631`. For delegated rows, each probe's firing control is the mutation |
+| CONF-3 | implemented | n/a (pure) | `_dev_/mutations.py`: 24 mutations across every implemented row that running something can break. Each must redden its named tests against a green baseline, and the tree is restored byte-for-byte afterwards; all 24 redden against core `8575631`. For delegated rows, each probe's firing control is the mutation |
 
 ---
 
 ## Gaps, ranked by cost
 
 1. **Delegated rows are only as good as the core rows they cite.** At `8575631` the core's file
-   grades spec 8.0.1: 21 delegated rules (REG-13, ICU-6, TOK-6, MARK-3, MARK-4, MSG-5, MSG-6, MSG-8, MSG-11, MIG-1, MIG-2, MIG-3, MIG-4, MIG-5, MIG-6, MIG-7, MIG-8, MIG-9, SNAP-1, SNAP-3, CACHE-2) have no core row yet, and it grades GATE-2, GATE-5, REG-8, REG-9 `provisional`; GATE-7, TOK-3, TOK-4 `partial`; TOK-2 `held (strip ruling)`. Those are the
+   grades spec 8.0.1: 22 delegated rules (REG-13, ICU-6, TOK-6, MARK-3, MARK-4, MSG-5, MSG-6, MSG-8, MSG-11, MIG-1, MIG-2, MIG-3, MIG-4, MIG-5, MIG-6, MIG-7, MIG-8, MIG-9, SNAP-1, SNAP-2, SNAP-3, CACHE-2) have no core row yet, and it grades GATE-2, GATE-5, REG-8, REG-9 `provisional`; GATE-7, TOK-3, TOK-4 `partial`; TOK-2 `held (strip ruling)`. Those are the
    core's to close; these rows follow its grades as it re-rows.
 2. **A `{category}` or `{phrase}` placeholder cannot be passed to `t()` or `at()` as a keyword,**
    and `category=` is silently taken as the category — the placeholder stays unfilled and the
@@ -212,27 +212,20 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
    mapping; the matching shape here is a `params=` mapping on `t()` and `at()`, decided together
    with `langsys-python-django`, which shares the signature. Until then the README documents the
    DI client as the way to pass those names.
-3. **The declared dependency does not express what the middleware needs.** `pyproject.toml` says
-   `langsys>=0.1.0`; the middleware needs the core's request scope and request-locale resolver,
-   which it carries from `8575631` on. The floor moves with the core's first release that
-   includes them.
-4. **Four sentences go beyond the reference wording table.** `less_than` ("must be less than
-   {value}"), `extra_forbidden` (`not_allowed`, "is not allowed"), a model or mapping of the wrong
-   type ("must be an object"), and the whole-request templates for a missing or malformed body
-   are this binding's own wording. They follow the reference's form, and are named here so the
-   fleet can adopt or replace them as one.
-5. **A URL locale is read from the query string only.** SRV-6 also allows a path segment or
-   subdomain the app routes by; an app that routes that way has no hook here yet to feed it in.
-6. **A raised request's send timing rests on the core's debounce.** Its scope ends as the
+3. **A raised request's send timing rests on the core's debounce.** Its scope ends as the
    exception leaves the middleware, before Starlette's error middleware sends the 500, and the
    core's debounce sends its misses 400ms later — after the error response, as
    `test_SRV3_a_request_that_raised_releases_its_misses_after_the_error_response` asserts, but
    by timing rather than by an event.
+4. **The declared dependency does not express what the middleware needs.** `pyproject.toml` says
+   `langsys>=0.1.0`; the middleware needs the core's request scope and request-locale resolver,
+   which it carries from `8575631` on. The floor moves with the core's first release that
+   includes them.
 
 ## Reproducing
 
 ```bash
-.venv/bin/pytest                          # 114 passed, the contract double included; live tests skip
+.venv/bin/pytest                          # 122 passed, the contract double included; live tests skip
 php artisan db:seed                       # in langsys2: (re)creates the slot-15 fixture
 .venv/bin/pytest -m integration           # 5 live; environment in tests/test_live.py
 .venv/bin/python _dev_/mutations.py       # CONF-3: every mutation must redden its named tests

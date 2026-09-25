@@ -134,6 +134,7 @@ PROBES: dict[str, tuple[str, str]] = {
     "TOK-6": (TOK, 'text = re.sub(r"\\s+", " ", text)\n'),
     **{f"MIG-{n}": (MIGRATION, "text = gettext(key)\n") for n in range(1, 10)},
     "SNAP-1": (r"snapshot|export_catalog", "snapshot = export_catalog(categories)\n"),
+    "SNAP-2": (r"snapshot|export_catalog", "client.seed(load_snapshot(path))\n"),
     "SNAP-3": (r"snapshot|export_catalog", "catalog = load_snapshot(path)\n"),
     "MSG-5": (r"render_server_message|\.render\(", "text = client.render_server_message(entry)\n"),
     "MSG-6": (r"DEFAULT_MESSAGE_CATEGORY|[\"']Errors[\"']", 'category = "Errors"\n'),
@@ -173,7 +174,7 @@ def test_ABSENCE(rule):
 CLIENT_OPTIONS = set(inspect.signature(LangsysClient.__init__).parameters) - {"self"}
 #: Where in an HTTP request the app keeps the locale — SRV-6's wiring, which BIND-4 allows.
 #: The core has no request, so it cannot define these, and none decides what the product does.
-REQUEST_SHAPE = {"app", "query_param", "cookie_name"}
+REQUEST_SHAPE = {"app", "query_param", "cookie_name", "path_segment", "subdomain"}
 
 
 def introduced_by_configure(fn) -> set:

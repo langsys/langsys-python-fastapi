@@ -2,8 +2,9 @@
 
 For each HTTP request it:
 
-1. resolves the locale through the core's ``resolve_request_locale`` (SRV-6): the URL's
-   ``?locale=``, then the ``langsys_locale`` cookie, then ``Accept-Language``, then the project's
+1. resolves the locale through the core's ``resolve_request_locale`` (SRV-6): the URL — a
+   path segment, the subdomain or ``?locale=``, wherever the app routes by it — then the
+   ``langsys_locale`` cookie, then ``Accept-Language``, then the project's
    base locale, each candidate validated against the locales the project serves. The response
    carries the ``Vary`` headers that choice depended on, and the middleware never writes the
    cookie. The locale is exposed to translations through the request-scoped context variable;
@@ -40,9 +41,16 @@ logger = logging.getLogger("langsys")
 
 
 class LangsysMiddleware:
-    """``query_param`` and ``cookie_name`` say where the app keeps the locale in a request —
-    wiring, not configuration (SRV-6). ``cookie_name=None`` means the app keeps no locale
-    cookie, so no response varies on one."""
+    """Where the app keeps the locale in a request — wiring, not configuration (SRV-6):
+
+    * ``path_segment`` — the index of the path segment the app routes the locale by
+      (``0`` for ``/es/pricing``);
+    * ``subdomain`` — the first label of the host carries it (``es.example.com``);
+    * ``query_param`` — the query parameter that carries it;
+    * ``cookie_name`` — the cookie the app keeps it in; ``None`` when there is none, so no
+      response varies on one.
+
+    The URL's value is the first of those present, in that order; the core validates it."""
 
     def __init__(
         self,
@@ -50,10 +58,14 @@ class LangsysMiddleware:
         *,
         query_param: str = "locale",
         cookie_name: Optional[str] = "langsys_locale",
+        path_segment: Optional[int] = None,
+        subdomain: bool = False,
     ) -> None:
         self.app = app
         self.query_param = query_param
         self.cookie_name = cookie_name
+        self.path_segment = path_segment
+        self.subdomain = subdomain
 
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
         if scope.get("type") != "http":
@@ -119,11 +131,31 @@ class LangsysMiddleware:
             cookie = morsel.value if morsel else None
 
         return client.resolve_request_locale(
-            url=query.get(self.query_param, [None])[0],
+            url=self._url_locale(scope, headers, query),
             cookie=cookie,
             accept_language=headers.get("accept-language"),
             uses_cookie=self.cookie_name is not None,
         )
+
+    def _url_locale(
+        self, scope: dict[str, Any], headers: dict[str, str], query: dict[str, list[str]]
+    ) -> Optional[str]:
+        """The locale the app routes by in the URL, or None: a path segment, then the subdomain,
+        then the query parameter — the first present. Validating it is the core's."""
+        if self.path_segment is not None:
+            segments = [part for part in str(scope.get("path") or "").split("/") if part]
+            if len(segments) > self.path_segment:
+                return segments[self.path_segment]
+        if self.subdomain:
+            label = _first_label(headers.get("host", ""))
+            if label:
+                return label
+        return query.get(self.query_param, [None])[0]
+
+
+def _first_label(host: str) -> Optional[str]:
+    labels = host.split(":")[0].split(".")
+    return labels[0] if len(labels) > 2 and labels[0] else None
 
 
 def _with_vary(headers: Any, vary: tuple[str, ...]) -> list[tuple[bytes, bytes]]:

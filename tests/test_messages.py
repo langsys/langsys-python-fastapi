@@ -26,7 +26,7 @@ from langsys.messages import (
     run_listing,
     template_markers,
 )
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from langsys_fastapi import LangsysMiddleware, configure, get_client
 from langsys_fastapi.messages import declared_templates, declares, install, message_error
@@ -73,6 +73,16 @@ class Coupon(BaseModel):
     @classmethod
     def _expired(cls, value: str) -> str:
         raise ValueError("The coupon has expired.")
+
+
+class Meta(BaseModel):
+    note: str = Field("", title="note")
+
+
+class Strict(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    amount: int = Field(title="amount", lt=100)
+    meta: Meta = Field(title="metadata")
 
 
 BAD = {
@@ -249,6 +259,48 @@ def test_MSG7_the_listing_covers_every_runtime_template_with_zero_problems(bound
         body = failed(http)
     emitted = {e["template"] for e in body["error"]["errors"]} | {body["error"]["template"]}
     assert emitted <= listed, emitted - listed
+
+
+# -- MSG-2's table: failures the reference's rules do not produce ------------------------------
+
+
+def test_MSG2_the_spec_table_words_lt_extra_fields_and_objects(bound):
+    with TestClient(make_app(Strict)) as http:
+        entries = entries_by_field(failed(http, "/extra/0", {"amount": 100, "meta": 5, "surprise": 1}))
+    assert {f: (e["code"], e["template"]) for f, e in entries.items()} == {
+        "amount": ("too_large", "The amount must be less than {value}."),
+        "meta": ("invalid_type", "The metadata must be an object."),
+        "surprise": ("not_allowed", "This field is not allowed."),
+    }
+
+
+@pytest.mark.parametrize(
+    ("send", "code", "template"),
+    [
+        ({}, "required", "The request body is required."),
+        ({"content": b"{not json", "headers": {"content-type": "application/json"}}, "invalid_format",
+         "The request body must be valid JSON."),
+        ({"json": [1, 2]}, "invalid_type", "The request body must be an object."),
+    ],
+    ids=["missing", "not-json", "not-an-object"],
+)
+def test_MSG1_MSG2_a_whole_request_failure_carries_no_field(bound, send, code, template):
+    with TestClient(make_app(Strict)) as http:
+        response = http.post("/extra/0", **send)
+    assert response.status_code == 422
+    (entry,) = response.json()["error"]["errors"]
+    assert "field" not in entry and (entry["code"], entry["template"]) == (code, template)
+
+
+def test_MSG7_the_listing_covers_the_spec_table_templates():
+    code, output = listing(make_app(Strict))
+    listed = {line.split("\t")[0] for line in output.splitlines()}
+    assert code == 0, output
+    assert {
+        "The amount must be less than {value}.", "The metadata must be an object.",
+        "This field is not allowed.", "The request body is required.",
+        "The request body must be valid JSON.", "The request body must be an object.",
+    } <= listed
 
 
 def test_MSG7_a_validator_that_declares_no_templates_fails_the_listing():

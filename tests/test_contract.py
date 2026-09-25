@@ -92,6 +92,34 @@ def test_SRV6_one_url_resolves_url_then_cookie_then_header_each_validated(sessio
         assert set(varies(nothing)) == {"Cookie", "Accept-Language"}
 
 
+def routed_app(**options: Any) -> FastAPI:
+    app = FastAPI()
+    app.add_middleware(LangsysMiddleware, **options)
+
+    @app.get("/{segment}/page")
+    def page(segment: str):
+        return {"locale": get_current_locale().lower()}
+
+    return app
+
+
+def test_SRV6_a_path_segment_the_app_routes_by_is_the_url_step(session):
+    session(READ_KEY)
+    with TestClient(routed_app(path_segment=0)) as http:
+        routed = http.get("/it-it/page", headers={"cookie": "langsys_locale=es-es", "accept-language": "es"})
+        assert (routed.json()["locale"], varies(routed)) == ("it-it", [])
+
+        unsupported = http.get("/fr-fr/page", headers={"cookie": "langsys_locale=es-es"})
+        assert (unsupported.json()["locale"], varies(unsupported)) == ("es-es", ["Cookie"])
+
+
+def test_SRV6_a_subdomain_the_app_routes_by_is_the_url_step(session):
+    session(READ_KEY)
+    with TestClient(locale_app(subdomain=True), base_url="http://it.site.test") as http:
+        routed = http.get("/page", headers={"cookie": "langsys_locale=es-es", "accept-language": "es"})
+    assert (routed.json()["locale"], varies(routed)) == ("it-it", [])
+
+
 def test_SRV6_vary_is_merged_into_the_apps_own(session):
     session(READ_KEY)
     with TestClient(locale_app(vary="Origin")) as http:
