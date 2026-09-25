@@ -169,6 +169,16 @@ def test_ABSENCE(rule):
     assert count(pattern, package_code()) == 0
 
 
+def test_MSG2_the_spec_table_sentences_come_from_the_core_not_a_copy_here():
+    """MSG-2's table is the core's `WORDINGS`: none of its sentences is written into this package,
+    so the two cannot drift apart."""
+    from langsys.messages import WORDINGS
+
+    sentences = [re.escape(template) for _, template in WORDINGS.values()]
+    assert count("|".join(sentences), [code_only('x = "This field is not allowed."\n')]) == 1, "control"
+    assert count("|".join(sentences), package_code()) == 0
+
+
 # -- BIND-4: no configuration the core does not define --------------------------
 
 CLIENT_OPTIONS = set(inspect.signature(LangsysClient.__init__).parameters) - {"self"}

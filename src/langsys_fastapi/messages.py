@@ -12,7 +12,8 @@ listing command. This module supplies what only the framework knows:
 
 The wording follows the reference table: the label is written into the sentence, and only a
 value that is not translatable — a number, a date — stays a ``{name}`` marker (MSG-3). A size
-rule takes its code from the field's type through the core's ``size_code`` (MSG-2).
+rule takes its code from the field's type through the core's ``size_code``, and the sentences
+the spec's MSG-2 table fixes come from the core's ``WORDINGS`` (MSG-2).
 
 Setup::
 
@@ -48,7 +49,7 @@ from fastapi.dependencies.utils import get_flat_dependant
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
-from langsys.messages import TemplateProblem, server_message, size_code
+from langsys.messages import WORDINGS, TemplateProblem, server_message, size_code, with_label
 from pydantic import AnyUrl, BaseModel, EmailStr
 from pydantic_core import PydanticCustomError
 from starlette.concurrency import run_in_threadpool
@@ -74,9 +75,9 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 #: The envelope's own entry, and the ones for a request that failed as a whole.
 FAILED = ("validation_failed", "The request failed validation.")
-BODY_REQUIRED = ("required", "The request body is required.")
-BODY_NOT_JSON = ("invalid_format", "The request body must be valid JSON.")
-BODY_NOT_OBJECT = ("invalid_type", "The request body must be an object.")
+BODY_REQUIRED = WORDINGS["body_missing"]
+BODY_NOT_JSON = WORDINGS["body_not_json"]
+BODY_NOT_OBJECT = WORDINGS["body_not_object"]
 _OBJECT_KINDS = ("model_type", "model_attributes_type", "dict_type")
 GENERIC = ("invalid", "The :attribute is invalid.")
 EMAIL = ("invalid_format", "The :attribute must be a valid email address.")
@@ -88,7 +89,7 @@ _PLAIN: dict[str, tuple[str, str]] = {
     "string_pattern_mismatch": ("invalid_format", "The :attribute format is invalid."),
     "enum": ("invalid_option", "The selected :attribute is invalid."),
     "literal_error": ("invalid_option", "The selected :attribute is invalid."),
-    "extra_forbidden": ("not_allowed", "This field is not allowed."),
+    "extra_forbidden": WORDINGS["extra_field"],
 }
 for _kind in ("int_type", "int_parsing", "int_from_float"):
     _PLAIN[_kind] = ("invalid_type", "The :attribute must be a whole number.")
@@ -99,7 +100,7 @@ for _kind in ("bool_type", "bool_parsing"):
 for _kind in ("list_type", "tuple_type", "set_type", "frozen_set_type"):
     _PLAIN[_kind] = ("invalid_type", "The :attribute must be a list.")
 for _kind in ("model_type", "model_attributes_type", "dict_type"):
-    _PLAIN[_kind] = ("invalid_type", "The :attribute must be an object.")
+    _PLAIN[_kind] = WORDINGS["object_type"]
 for _kind in ("url_type", "url_parsing", "url_scheme", "url_syntax_violation", "url_too_long"):
     _PLAIN[_kind] = ("invalid_format", "The :attribute must be a valid URL.")
 for _kind in ("uuid_type", "uuid_parsing", "uuid_version"):
@@ -151,7 +152,7 @@ _SIZED: dict[str, tuple[Any, str, str, str, str]] = {
     "greater_than_equal": (0, "small", "min", "ge", "The :attribute must be at least {min}."),
     "less_than_equal": (0, "large", "max", "le", "The :attribute must not be greater than {max}."),
     "greater_than": (0, "small", "value", "gt", "The :attribute must be greater than {value}."),
-    "less_than": (0, "large", "value", "lt", "The :attribute must be less than {value}."),
+    "less_than": (0, "large", "value", "lt", WORDINGS["less_than"][1]),
 }
 
 #: A bound that is a date is a date comparison, worded as the reference's after/before rules.
@@ -280,7 +281,7 @@ def _rule(
 
 
 def _labelled(wording: str, label: str) -> str:
-    return wording.replace(":attribute", label)
+    return with_label(wording, label)
 
 
 def _number(value: Any) -> Any:

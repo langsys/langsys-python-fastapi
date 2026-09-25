@@ -7,10 +7,10 @@
 | **SDK** | `langsys-fastapi`, the FastAPI/Starlette binding |
 | **specVersion** | 8.2.13 |
 | **SDK revision** | `feature/838_write_key_gating`, cut from `main` `29bb650` |
-| **Core revision** | `langsys-python` `8575631a1296e7ca694c9badd786aa880829a4a3`, as a clean `git archive` — see *Reproducing* |
+| **Core revision** | `langsys-python` `d5c0f7991c8742666ab04cc22208b5da553907c4`, as a clean `git archive` — see *Reproducing* |
 | **Contract fixture** | `tests/contract-fixture/`, tree `542f57f5ffcb9038db1b7411152b7e31b96cb269`, vendored byte-exact with the core's harness `tests/contract.py` |
 | **Published** | Never — PyPI and TestPyPI both 404 (positive control: `httpx` → 200) |
-| **Suite** | 122 passed by default, the contract tests included; 5 live under `pytest -m integration`, all passing against the local stack |
+| **Suite** | 123 passed by default, the contract tests included; 5 live under `pytest -m integration`, all passing against the local stack |
 
 Spec version implemented: **v8.2.13**, blob `abe122cf5346f92a0474b627d49451e6de9cd761`. The blob is
 re-derived on every write of this file, from the commit rather than a branch:
@@ -58,12 +58,12 @@ and the seeder upserts, so `php artisan db:seed` recreates the fixture exactly. 
 asserts HTTP acceptance only: the local stack runs with queue workers down.
 
 **Delegation.** A `delegated` row cites the core's row in `langsys-python`'s `CONFORMANCE.md` at
-`8575631`, graded as that file grades it. That file still grades spec 8.0.1's 79 rules, so a rule
+`d5c0f79`, graded as that file grades it. That file still grades spec 8.0.1's 79 rules, so a rule
 new since then reads "no core row yet" until the core re-rows. Each delegated row carries an
 absence probe, `tests/test_probes.py::test_ABSENCE[<rule>]`: it reads this package's code only
 (docstrings and comments blanked), asserts it read all 6 files, and carries a firing control, a
 snippet the same filter must catch. The count beside each probe is the same pattern run over the
-core at `8575631`; a core count of 0 means the core has no such code either, and the firing
+core at `d5c0f79`; a core count of 0 means the core has no such code either, and the firing
 control alone carries the proof.
 
 ---
@@ -95,9 +95,9 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 | GATE-8 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[GATE-8]`: 0 here, 59 in core |
 | GATE-9 | n/a (profile: browser) | - | The base-locale discovery gate is a browser client's |
 | GATE-10 | n/a (architecture: this binding renders no HTML of its own, so it has no root or element to mark and no DOM host that reads a mark, live if it adds a template integration) | - | The core's `translate_page()`, reachable through the DI client, is the producer on this stack and marks its root off the base locale |
-| CAT-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CAT-1]`: no catalog read here, 0 here, 72 in core |
-| CAT-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CAT-2]`: 0 here, 72 in core |
-| CAT-3 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CAT-3]`: 0 here, 93 in core |
+| CAT-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CAT-1]`: no catalog read here, 0 here, 75 in core |
+| CAT-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CAT-2]`: 0 here, 75 in core |
+| CAT-3 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CAT-3]`: 0 here, 98 in core |
 | REG-1 | delegated | - | Core: implemented, live. Probe `test_ABSENCE[REG-1]`: no registration call or POST here, 0 here, 10 in core |
 | REG-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[REG-2]`: no debounce, timer or task here, 0 here, 12 in core. `test_REG2_everything_one_request_found_goes_out_as_one_request` shows a five-miss request going out as one request with no flush in the app |
 | REG-3 | implemented | live | The execution context this binding owns is the request: once the response is out, the middleware hands the queue to the core's public `flush_pending()`, and `reset_client()` and `configure()` flush a retired client before closing it. Live: `tests/test_live.py::test_LIVE_SRV3_REG3_accepted_after_the_response_and_never_from_a_read_key[CONTROL-write-key-on-the-same-render-pushes]` — the stack answered the POST 2xx and the queue is empty. Also `test_REG3_reconfiguring_hands_the_retired_client_s_queue_to_the_core_first`. Mutations: dropping the end-of-request flush reddens 3 named tests; closing without flushing reddens 1. The manual flush is the core's, reachable as `get_langsys().flush_pending()` and documented in the README |
@@ -109,7 +109,7 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 | REG-9 | delegated | - | Core: provisional, mock. Probe `test_ABSENCE[REG-9]`: 0 here, 13 in core |
 | REG-10 | delegated | - | Core: implemented, live. Probe `test_ABSENCE[REG-10]`: this package returns no flush result, 0 here, 14 in core. Its end-of-request guard logs and never raises past a response already sent |
 | REG-11 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[REG-11]`: 0 here, 14 in core |
-| REG-12 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[REG-12]`: 0 here, 22 in core |
+| REG-12 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[REG-12]`: 0 here, 24 in core |
 | REG-13 | delegated | - | Core: no core row yet. Probe `test_ABSENCE[REG-13]`: no catalog-load state here, 0 here, 0 in core |
 | HINT-1 | n/a (profile: browser) | - | A server SDK has no page URL to report |
 | HINT-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[HINT-2]`: 0 here, 0 in core. Neither has a report lane; control `http.post("discovery/hint", …)` fires |
@@ -130,20 +130,20 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 | ICU-4 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[ICU-4]`: 0 here, 37 in core |
 | ICU-5 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[ICU-5]`: 0 here, 37 in core |
 | ICU-6 | delegated | - | Core: no core row yet. Probe `test_ABSENCE[ICU-6]`: no formatter here, 0 here, 37 in core |
-| CID-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-1]`: no hashing or ids here, 0 here, 56 in core |
-| CID-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-2]`: 0 here, 56 in core |
-| CID-3 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-3]`: 0 here, 56 in core |
-| CID-4 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-4]`: 0 here, 56 in core |
-| TOK-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[TOK-1]`: no parser or tokenizer here, 0 here, 52 in core. HTML paths are reachable only through the DI client, which is the core itself (BIND-6) |
-| TOK-2 | delegated | - | Core: held (strip ruling), n/a (pure). Probe `test_ABSENCE[TOK-2]`: 0 here, 52 in core |
-| TOK-3 | delegated | - | Core: partial, n/a (pure). Probe `test_ABSENCE[TOK-3]`: 0 here, 52 in core |
-| TOK-4 | delegated | - | Core: partial, n/a (pure). Probe `test_ABSENCE[TOK-4]`: 0 here, 52 in core |
-| TOK-5 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[TOK-5]`: 0 here, 52 in core |
-| TOK-6 | delegated | - | Core: no core row yet. Probe `test_ABSENCE[TOK-6]`: 0 here, 52 in core |
-| MARK-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[MARK-1]`: no identity or resolved attribute here, 0 here, 29 in core |
-| MARK-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[MARK-2]`: 0 here, 29 in core |
-| MARK-3 | delegated | - | Core: no core row yet. Probe `test_ABSENCE[MARK-3]`: 0 here, 29 in core |
-| MARK-4 | delegated | - | Core: no core row yet. Probe `test_ABSENCE[MARK-4]`: 0 here, 29 in core |
+| CID-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-1]`: no hashing or ids here, 0 here, 58 in core |
+| CID-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-2]`: 0 here, 58 in core |
+| CID-3 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-3]`: 0 here, 58 in core |
+| CID-4 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-4]`: 0 here, 58 in core |
+| TOK-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[TOK-1]`: no parser or tokenizer here, 0 here, 55 in core. HTML paths are reachable only through the DI client, which is the core itself (BIND-6) |
+| TOK-2 | delegated | - | Core: held (strip ruling), n/a (pure). Probe `test_ABSENCE[TOK-2]`: 0 here, 55 in core |
+| TOK-3 | delegated | - | Core: partial, n/a (pure). Probe `test_ABSENCE[TOK-3]`: 0 here, 55 in core |
+| TOK-4 | delegated | - | Core: partial, n/a (pure). Probe `test_ABSENCE[TOK-4]`: 0 here, 55 in core |
+| TOK-5 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[TOK-5]`: 0 here, 55 in core |
+| TOK-6 | delegated | - | Core: no core row yet. Probe `test_ABSENCE[TOK-6]`: 0 here, 55 in core |
+| MARK-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[MARK-1]`: no identity or resolved attribute here, 0 here, 23 in core |
+| MARK-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[MARK-2]`: 0 here, 23 in core |
+| MARK-3 | delegated | - | Core: no core row yet. Probe `test_ABSENCE[MARK-3]`: 0 here, 23 in core |
+| MARK-4 | delegated | - | Core: no core row yet. Probe `test_ABSENCE[MARK-4]`: 0 here, 23 in core |
 | SSR-1 | n/a (profile: browser) | - | These rules constrain a browser SDK running under server rendering |
 | SSR-2 | n/a (profile: browser) | - | These rules constrain a browser SDK running under server rendering |
 | SSR-3 | n/a (profile: browser) | - | These rules constrain a browser SDK running under server rendering |
@@ -154,7 +154,7 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 | SRV-5 | n/a (architecture: FastAPI has no component model, so this binding renders no children to capture, live if a template-component integration is added) | - | The core's DOM walker is reachable only through the DI client, where it is the core's row |
 | SRV-6 | implemented | contract | The middleware asks the core's `resolve_request_locale` for the locale — the URL, then the locale cookie, then `Accept-Language`, then the project's base locale, each validated against the project's locales — merges the returned `Vary` into the app's own, and never writes a cookie. The URL step is whichever the app routes by: a path segment (`path_segment=`), the subdomain (`subdomain=True`) or the query parameter, the first present; with the cookie name these are wiring, and `cookie_name=None` declares that the app keeps no locale cookie. Against the double serving en-us, it-it and es-es: `test_contract.py::test_SRV6_one_url_resolves_url_then_cookie_then_header_each_validated` — the URL wins over a conflicting cookie and header with no `Vary`; a cookie wins with `Vary: Cookie`; a header alone is negotiated with `Vary` naming `Accept-Language`; an unsupported cookie falls through to the header and is not re-set; an unsupported URL locale falls through to the base. `test_SRV6_a_path_segment_the_app_routes_by_is_the_url_step` and `test_SRV6_a_subdomain_the_app_routes_by_is_the_url_step`, each against a conflicting cookie and header; `test_SRV6_vary_is_merged_into_the_apps_own`; `test_SRV6_an_app_with_no_locale_cookie_does_not_vary_on_one`. Mutations: never sending `Vary`, replacing the app's `Vary`, ignoring the path segment, ignoring the subdomain and never offering the cookie each redden their named tests |
 | MSG-1 | implemented | n/a (pure) | `install(app)` answers a failed validation with the default langsys envelope, `{status: false, error: {code, message, template, errors: [entry, …]}}`, each entry `{field?, code, message, template, params?}` built by the core's constructor. `test_messages.py::test_MSG1_the_default_envelope_resolves_through_the_core_as_the_reference_does` resolves it through the core's `resolve_server_messages` exactly as the vector file's `langsys-envelope-validation` resolves; `test_MSG1_MSG4_every_entry_has_the_canonical_shape_and_message_is_the_filled_template` checks key order |
-| MSG-2 | implemented | n/a (pure) | Codes come from the wording table, each in the shared vocabulary, and a size rule's code is the core's `size_code` for the field's type. `test_MSG2_codes_come_from_the_vocabulary_and_size_codes_follow_the_field_type`: text `too_short`, number `too_small`, list `too_many`. The spec's table for failures the reference's rules do not produce is used verbatim: `test_MSG2_the_spec_table_words_lt_extra_fields_and_objects` (`lt`, an extra field, an object type) and `test_MSG1_MSG2_a_whole_request_failure_carries_no_field` (missing body, invalid JSON, a body that is not an object, each with no `field`). Mutation: wording an extra field with its label reddens 2 named tests |
+| MSG-2 | implemented | n/a (pure) | Codes come from the wording table, each in the shared vocabulary, and a size rule's code is the core's `size_code` for the field's type. `test_MSG2_codes_come_from_the_vocabulary_and_size_codes_follow_the_field_type`: text `too_short`, number `too_small`, list `too_many`. The spec's table for failures the reference's rules do not produce is the core's `WORDINGS`, used as it stands — `test_MSG2_the_spec_table_sentences_come_from_the_core_not_a_copy_here` finds none of its sentences written into this package: `test_MSG2_the_spec_table_words_lt_extra_fields_and_objects` (`lt`, an extra field, an object type) and `test_MSG1_MSG2_a_whole_request_failure_carries_no_field` (missing body, invalid JSON, a body that is not an object, each with no `field`). Mutation: wording an extra field with its label reddens 2 named tests |
 | MSG-3 | implemented | n/a (pure) | Every template is a whole sentence with the field's label written in, worded as the langsys4 reference's `RuleWording`; markers carry only numbers and dates. `test_MSG3_labels_are_written_in_and_markers_hold_only_values` runs each emitted template through the core's `check_template` |
 | MSG-4 | implemented | n/a (pure) | `test_MSG1_MSG4_every_entry_has_the_canonical_shape_and_message_is_the_filled_template`: `fill(template, params)` reproduces `message` for every entry, numbers are JSON numbers, and `params` is present exactly when the template has markers. `test_MSG9_the_canonical_reference_entry_is_what_a_failed_min_length_produces`: a failed `min_length=12` yields the vector file's canonical `too_short` entry byte for byte |
 | MSG-5 | delegated | - | Core: no core row yet. Probe `test_ABSENCE[MSG-5]`: this package renders no entry, 0 here, 1 in core. An app renders an entry through the core client's `render_server_message`, reachable through DI |
@@ -181,7 +181,7 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 | BIND-2 | implemented | n/a (pure) | `test_ABSENCE[BIND-2]`: no capability name in this package's code, 0 here, 59 in core; the firing control is the `29bb650` end-of-request branch verbatim. Behaviour: `test_BIND2_GATE2_an_unknown_capability_holds_the_queue_through_the_middleware`. Mutation: restoring the branch reddens 3 named tests |
 | BIND-3 | implemented | n/a (pure) | `test_ABSENCE[BIND-3]`: no transport, timer, sleep, retry, backoff, header or `debounce` in this package's code, 0 here, 34 in core. The end-of-request flush and the request scope are lifecycle calls into the core, not schedules. Firing control: a client built with `debounce=None`. Mutation: building the shared client that way reddens this probe and REG-2's |
 | BIND-4 | implemented | n/a (pure) | `test_BIND4_configure_introduces_no_option_the_core_does_not_define`: every `configure()` option is a `LangsysClient` option. `test_BIND4_the_middleware_introduces_only_request_shape_options`: the middleware takes only `path_segment`, `subdomain`, `query_param` and `cookie_name` — SRV-6's wiring, where the app keeps a value the core defines. Firing controls: the `29bb650` signature with `auto_flush` and `supported`, and a `discovery` option. Mutation: restoring `auto_flush` reddens it |
-| BIND-5 | implemented | n/a (pure) | `test_ABSENCE[BIND-5]`: nothing memoized in front of `t()`, 0 here, 7 in core. Mutation: `lru_cache` on `t()` reddens it |
+| BIND-5 | implemented | n/a (pure) | `test_ABSENCE[BIND-5]`: nothing memoized in front of `t()`, 0 here, 9 in core. Mutation: `lru_cache` on `t()` reddens it |
 | BIND-6 | implemented | n/a (pure) | `test_BIND6_nothing_exported_shadows_a_core_name_with_something_else` and `test_BIND6_DI_hands_out_the_core_client_itself`: DI returns the core `LangsysClient` itself. The other exported names are framework idioms — the middleware, `t`/`at` over the shared client, DI providers, request-locale accessors — and `langsys_fastapi.messages` adds only the Pydantic side of the entry the core defines. Mutation: exporting a reimplemented core name reddens it |
 | GRANT-1 | n/a (profile: browser) | - | A server binding holds a key, not a grant. No header is set here (`test_ABSENCE[WIRE-1]`) |
 | GRANT-2 | n/a (profile: browser) | - | A server binding holds a key, not a grant |
@@ -197,13 +197,13 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 | WIRE-5 | implemented | n/a (pure) | `test_WIRE5_configure_redirects_the_api_base_even_after_first_use`: requests arrive at one double, then at a second after `configure()` is called again once the client has been used. `test_WIRE5_the_seam_is_findable_where_an_integrator_looks`: the README's Configuration section names `api_url` and `LANGSYS_API_URL`, and so does the `configure()` docstring. The contract tests reach the shared double through this seam. Mutation: `configure()` not rebuilding the client reddens the first |
 | CONF-1 | implemented | live | Every row whose property depends on what the API answers is proven against a server that can say no, asserting what it accepted: REG-3 and SRV-1 live; SRV-3, SRV-6 and MSG-8's evidence against the contract double, with drift for the absence. Every path: SRV-1 is proven on sync `t()`, async `at()` and DI. The mock-backed unit tests beside them are supporting evidence, not the grade |
 | CONF-2 | implemented | n/a (pure) | Every row carries a tier, and `_dev_/conformance_counts.py` rejects a tier its status cannot carry, including anything but `-` on a delegated row. The shared contract fixture is vendored by tree id (`542f57f5`) and reached through WIRE-5's seam; the one absence proven here drifts the capability and carries its control (SRV-3). `live` evidence comes from a committed, idempotent seeder |
-| CONF-3 | implemented | n/a (pure) | `_dev_/mutations.py`: 24 mutations across every implemented row that running something can break. Each must redden its named tests against a green baseline, and the tree is restored byte-for-byte afterwards; all 24 redden against core `8575631`. For delegated rows, each probe's firing control is the mutation |
+| CONF-3 | implemented | n/a (pure) | `_dev_/mutations.py`: 24 mutations across every implemented row that running something can break. Each must redden its named tests against a green baseline, and the tree is restored byte-for-byte afterwards; all 24 redden against core `d5c0f79`. For delegated rows, each probe's firing control is the mutation |
 
 ---
 
 ## Gaps, ranked by cost
 
-1. **Delegated rows are only as good as the core rows they cite.** At `8575631` the core's file
+1. **Delegated rows are only as good as the core rows they cite.** At `d5c0f79` the core's file
    grades spec 8.0.1: 22 delegated rules (REG-13, ICU-6, TOK-6, MARK-3, MARK-4, MSG-5, MSG-6, MSG-8, MSG-11, MIG-1, MIG-2, MIG-3, MIG-4, MIG-5, MIG-6, MIG-7, MIG-8, MIG-9, SNAP-1, SNAP-2, SNAP-3, CACHE-2) have no core row yet, and it grades GATE-2, GATE-5, REG-8, REG-9 `provisional`; GATE-7, TOK-3, TOK-4 `partial`; TOK-2 `held (strip ruling)`. Those are the
    core's to close; these rows follow its grades as it re-rows.
 2. **A `{category}` or `{phrase}` placeholder cannot be passed to `t()` or `at()` as a keyword,**
@@ -219,13 +219,13 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
    by timing rather than by an event.
 4. **The declared dependency does not express what the middleware needs.** `pyproject.toml` says
    `langsys>=0.1.0`; the middleware needs the core's request scope and request-locale resolver,
-   which it carries from `8575631` on. The floor moves with the core's first release that
+   and the message wording table, which it carries from `d5c0f79` on. The floor moves with the core's first release that
    includes them.
 
 ## Reproducing
 
 ```bash
-.venv/bin/pytest                          # 122 passed, the contract double included; live tests skip
+.venv/bin/pytest                          # 123 passed, the contract double included; live tests skip
 php artisan db:seed                       # in langsys2: (re)creates the slot-15 fixture
 .venv/bin/pytest -m integration           # 5 live; environment in tests/test_live.py
 .venv/bin/python _dev_/mutations.py       # CONF-3: every mutation must redden its named tests
@@ -236,6 +236,6 @@ The contract tests need Node 18 or later. The editable link follows `langsys-pyt
 tree; to run against the commit this file cites, prefix any command above with `PYTHONPATH`:
 
 ```bash
-mkdir -p /tmp/langsys-core && git -C ../langsys-python archive 8575631 src | tar -x -C /tmp/langsys-core
+mkdir -p /tmp/langsys-core && git -C ../langsys-python archive d5c0f79 src | tar -x -C /tmp/langsys-core
 PYTHONPATH=/tmp/langsys-core/src .venv/bin/pytest
 ```

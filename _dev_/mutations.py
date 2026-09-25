@@ -287,7 +287,7 @@ MUTATIONS = [
         "word an extra field with its label instead of the spec table's sentence",
         f"{PKG}/messages.py",
         [(
-            '    "extra_forbidden": ("not_allowed", "This field is not allowed."),\n',
+            '    "extra_forbidden": WORDINGS["extra_field"],\n',
             '    "extra_forbidden": ("not_allowed", "The :attribute is not allowed."),\n',
         )],
         [
