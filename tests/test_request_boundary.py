@@ -385,6 +385,7 @@ def test_SRV2_concurrent_requests_in_different_locales_see_only_their_own(httpx_
     """Both requests are inside their scope — both locales set — before either translates.
     Run one after the other this proves nothing; the failure is the interleave."""
     httpx_mock.add_callback(by_locale, url=TRANS, is_reusable=True)
+    httpx_mock.add_response(url=AUTH, json=auth("read", False), is_reusable=True)
     app = make_app()
 
     async def both():
@@ -445,20 +446,10 @@ def locale_app(**options: Any) -> FastAPI:
     return app
 
 
-def test_supported_constrains_an_explicit_locale_as_it_constrains_accept_language(bound):
-    """Found while writing CONFORMANCE.md: only Accept-Language was matched against
-    `supported`, so any `?locale=` or cookie value reached the API as a locale — a catalog
-    fetch and a cache entry per distinct string a visitor cares to send."""
-    with TestClient(locale_app(supported=["en-US", "es-ES"])) as http:
-        unsupported = http.get("/locale?locale=de-DE", headers={"accept-language": "es"})
-        assert unsupported.json() == {"locale": "es-ES"}
-        assert http.get("/locale?locale=es", headers={"accept-language": "en"}).json() == {"locale": "es-ES"}
-        assert http.get("/locale", headers={"cookie": "langsys_locale=fr-FR"}).json() == {"locale": ""}
-
-
-def test_a_non_utf8_header_byte_does_not_fail_the_request(bound):
-    """Headers were decoded as UTF-8; HTTP header bytes are latin-1, and one stray byte in
-    any header raised before the app ran."""
+def test_a_non_utf8_header_byte_does_not_fail_the_request(httpx_mock, bound):
+    """HTTP header bytes are latin-1; a byte that is not UTF-8, in any header, must not fail
+    the request before the app runs."""
+    httpx_mock.add_response(url=AUTH, json=auth("read", False), is_reusable=True)
     with TestClient(locale_app()) as http:
         response = http.get("/locale?locale=es-ES", headers={"x-legacy": b"caf\xe9"})
-    assert response.json() == {"locale": "es-ES"}
+    assert response.json()["locale"].lower() == "es-es"

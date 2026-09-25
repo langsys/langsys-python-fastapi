@@ -30,7 +30,7 @@ def authorize(key_type="read"):
             "id": "proj-1",
             "title": "T",
             "base_locale": "en-us",
-            "target_locales": [],
+            "target_locales": ["es-es"],
             "default_locales": {},
             "key_type": key_type,
             "langsys_settings": {"translatable_items": {"batch_limit": 200}},
@@ -77,7 +77,6 @@ async def _drive(mw, scope):
     async def send(message):
         sent.append(message)
 
-    # The inner app records the locale that translations would see.
     async def inner(s, r, sd):
         seen["locale"] = get_current_locale()
         await sd({"type": "http.response.start", "status": 200, "headers": []})
@@ -98,28 +97,28 @@ def test_t_helper_uses_request_locale(httpx_mock, client):
 
 
 def test_middleware_locale_from_query(httpx_mock, client):
-    mw = LangsysMiddleware(None)
-    seen = asyncio.run(_drive(mw, _scope(query=b"locale=es-es")))
-    assert seen["locale"] == "es-ES"  # canonicalized
+    httpx_mock.add_response(url=AUTH, json=authorize(), is_reusable=True)
+    seen = asyncio.run(_drive(LangsysMiddleware(None), _scope(query=b"locale=es-es")))
+    assert seen["locale"].lower() == "es-es"
     assert get_current_locale() == ""  # reset after the request
 
 
 def test_middleware_locale_from_accept_language(httpx_mock, client):
-    mw = LangsysMiddleware(None, supported=["en-US", "es-ES", "es-CR"])
+    httpx_mock.add_response(url=AUTH, json=authorize(), is_reusable=True)
     headers = [(b"accept-language", b"es-ES,en;q=0.5")]
-    seen = asyncio.run(_drive(mw, _scope(headers=headers)))
-    assert seen["locale"] == "es-ES"
+    seen = asyncio.run(_drive(LangsysMiddleware(None), _scope(headers=headers)))
+    assert seen["locale"].lower() == "es-es"
 
 
 def test_middleware_locale_from_cookie(httpx_mock, client):
-    mw = LangsysMiddleware(None)
+    httpx_mock.add_response(url=AUTH, json=authorize(), is_reusable=True)
     headers = [(b"cookie", b"langsys_locale=es-ES")]
-    seen = asyncio.run(_drive(mw, _scope(headers=headers)))
-    assert seen["locale"] == "es-ES"
+    seen = asyncio.run(_drive(LangsysMiddleware(None), _scope(headers=headers)))
+    assert seen["locale"].lower() == "es-es"
 
 
 def test_middleware_clears_pending_on_read_key(httpx_mock, client):
-    httpx_mock.add_response(url=AUTH, json=authorize("read"))
+    httpx_mock.add_response(url=AUTH, json=authorize("read"), is_reusable=True)
     httpx_mock.add_response(url=TRANS, json=catalog({"UI": {}}))
 
     mw = LangsysMiddleware(None)

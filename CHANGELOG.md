@@ -8,11 +8,16 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- FastAPI/Starlette integration over the `langsys` base SDK: ASGI middleware that resolves the
-  request locale from the query string, a cookie or `Accept-Language` — each matched against
-  `supported` by the SDK's own matcher — a synchronous `t()` helper plus an async `at()` that
-  runs the blocking SDK call in a threadpool, and dependency-injection access to the client
-  and the current locale (`get_langsys`, `current_locale`).
+- FastAPI/Starlette integration over the `langsys` base SDK: ASGI middleware that serves each
+  request in the locale the SDK resolves — the URL's `?locale=`, then the locale cookie, then
+  `Accept-Language`, each validated against the project's locales — with the `Vary` headers that
+  choice depended on; a synchronous `t()` helper plus an async `at()` that runs the blocking SDK
+  call in a threadpool; and dependency-injection access to the client and the current locale
+  (`get_langsys`, `current_locale`).
+- Validation errors as translatable server messages: `langsys_fastapi.messages.install(app)`
+  answers a failed request with entries built from the Pydantic rules that failed, each a whole
+  sentence with the field's `title` written in; `message_error()` and `@declares` for custom
+  validators; and `declared_templates(app)`, a provider for the SDK's listing command.
 - A request-safe shared client whose locale comes from a `contextvars` context variable, so one
   instance serves concurrent requests, each in its own language.
 - Registration after the response: phrases a request discovers are held under the SDK's

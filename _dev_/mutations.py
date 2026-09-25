@@ -27,6 +27,8 @@ ROOT = Path(__file__).resolve().parent.parent
 PKG = "src/langsys_fastapi"
 BOUNDARY = "tests/test_request_boundary.py"
 PROBES = "tests/test_probes.py"
+CONTRACT = "tests/test_contract.py"
+MESSAGES = "tests/test_messages.py"
 
 
 @dataclass
@@ -126,7 +128,7 @@ MUTATIONS = [
         "never expose the resolved locale to the request",
         f"{PKG}/middleware.py",
         [(
-            "        token = set_current_locale(locale) if locale else None\n",
+            "        token = set_current_locale(choice.locale) if choice.locale else None\n",
             "        token = None\n",
         )],
         [
@@ -183,8 +185,8 @@ MUTATIONS = [
         "give the middleware the 29bb650 auto_flush option back",
         f"{PKG}/middleware.py",
         [(
-            "        supported: Optional[Sequence[str]] = None,\n    ) -> None:\n",
-            "        supported: Optional[Sequence[str]] = None,\n"
+            '        cookie_name: Optional[str] = "langsys_locale",\n    ) -> None:\n',
+            '        cookie_name: Optional[str] = "langsys_locale",\n'
             "        auto_flush: bool = True,\n    ) -> None:\n",
         )],
         [f"{PROBES}::test_BIND4_the_middleware_introduces_only_request_shape_options"],
@@ -220,6 +222,69 @@ MUTATIONS = [
         f"{PKG}/client.py",
         [("    reset_client()\n", "    pass\n")],
         [f"{PROBES}::test_WIRE5_configure_redirects_the_api_base_even_after_first_use"],
+    ),
+    Mutation(
+        "SRV-6",
+        "never send the Vary the locale choice depended on",
+        f"{PKG}/middleware.py",
+        [(
+            '            if message["type"] == "http.response.start" and choice.vary:\n',
+            "            if False:\n",
+        )],
+        [
+            f"{CONTRACT}::test_SRV6_one_url_resolves_url_then_cookie_then_header_each_validated",
+            f"{CONTRACT}::test_SRV6_vary_is_merged_into_the_apps_own",
+            f"{CONTRACT}::test_SRV6_an_app_with_no_locale_cookie_does_not_vary_on_one",
+        ],
+    ),
+    Mutation(
+        "SRV-6",
+        "replace the app's own Vary instead of merging into it",
+        f"{PKG}/middleware.py",
+        [(
+            "    named.extend(v for v in vary if v.lower() not in lowered)\n",
+            "    named = list(vary)\n",
+        )],
+        [f"{CONTRACT}::test_SRV6_vary_is_merged_into_the_apps_own"],
+    ),
+    Mutation(
+        "SRV-6",
+        "never offer the cookie as a candidate",
+        f"{PKG}/middleware.py",
+        [("            cookie=cookie,\n", "            cookie=None,\n")],
+        [f"{CONTRACT}::test_SRV6_one_url_resolves_url_then_cookie_then_header_each_validated"],
+    ),
+    Mutation(
+        "MSG-9",
+        "build the template from Pydantic's rendered text",
+        f"{PKG}/messages.py",
+        [(
+            "            code, template, params = _rule("
+            'kind, dict(error.get("ctx") or {}), label, annotation)\n',
+            '            code, template, params = "invalid", str(error.get("msg")), {}\n',
+        )],
+        [
+            f"{MESSAGES}::test_MSG9_entries_are_built_from_the_failed_rules",
+            f"{MESSAGES}::test_MSG9_the_canonical_reference_entry_is_what_a_failed_min_length_produces",
+            f"{MESSAGES}::test_MSG2_codes_come_from_the_vocabulary_and_size_codes_follow_the_field_type",
+        ],
+    ),
+    Mutation(
+        "MSG-10",
+        "label a field by its key instead of its declared title",
+        f"{PKG}/messages.py",
+        [("    return (title or key), node\n", "    return key, node\n")],
+        [f"{MESSAGES}::test_MSG10_the_declared_title_is_the_label_not_the_key"],
+    ),
+    Mutation(
+        "MSG-7",
+        "list an unlabelled field under its key instead of reporting it",
+        f"{PKG}/messages.py",
+        [(
+            '    label = getattr(info, "title", None)\n    if not label:\n',
+            '    label = getattr(info, "title", None) or path\n    if not label:\n',
+        )],
+        [f"{MESSAGES}::test_MSG7_MSG10_a_validated_field_with_no_label_fails_the_listing_by_name"],
     ),
 ]
 

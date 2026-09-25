@@ -25,7 +25,7 @@ from langsys_fastapi import LangsysMiddleware, configure, at
 configure(api_key="…", project_id="…", base_locale="en-US")   # or LANGSYS_* env vars
 
 app = FastAPI()
-app.add_middleware(LangsysMiddleware, supported=["en-US", "es-ES"])
+app.add_middleware(LangsysMiddleware)
 
 @app.get("/save")
 async def save():
@@ -62,12 +62,16 @@ def countries(langsys: LangsysClient = Depends(get_langsys), loc: str = Depends(
 
 ## How the locale is resolved
 
-`LangsysMiddleware` picks the request locale in order: `?locale=`, then the
-`langsys_locale` cookie, then the `Accept-Language` header. Each candidate goes through the
-base SDK's `detect_preferred_locale`, so `supported` constrains all three alike: an
-unsupported `?locale=` or cookie value falls through to the next source instead of being
-used. The chosen locale is exposed to translations for the request via a context variable,
-so a single shared client is safe across concurrent requests.
+`LangsysMiddleware` asks the base SDK which locale to serve, in order: the URL's `?locale=`, then
+the `langsys_locale` cookie, then `Accept-Language`, and otherwise the project's base locale.
+Every candidate is checked against the locales the project serves — its base and target
+locales — and an unsupported one is skipped. The middleware never writes the cookie; your app
+owns it.
+
+The response carries the `Vary` headers the choice depended on — `Cookie`, `Accept-Language`, or
+neither when the URL decided — merged into any `Vary` your app sets, so a cache in front of the
+site keys on them. The chosen locale is exposed to translations through a context variable, so a
+single shared client is safe across concurrent requests.
 
 ## After the response
 
@@ -93,6 +97,75 @@ For work done outside a request (startup code, background jobs), `get_langsys().
 is the manual flush. The automatic flush at process exit is best-effort: it does not run if
 the process is killed.
 
+## Validation errors
+
+`install(app)` answers a failed request validation with the langsys envelope. Each failure is an
+entry built from the rule that failed — never from Pydantic's rendered text:
+
+```python
+from langsys_fastapi.messages import install
+
+install(app)
+```
+
+```json
+{"status": false,
+ "error": {"code": "validation_failed", "message": "The request failed validation.",
+           "template": "The request failed validation.",
+           "errors": [{"field": "password", "code": "too_short",
+                       "message": "The password must be at least 12 characters.",
+                       "template": "The password must be at least {min} characters.",
+                       "params": {"min": 12}}]}}
+```
+
+An entry's `template` is a whole sentence with the field's label written in, taken from
+`Field(title=…)` or `Query(title=…)`; `params` hold only numbers and dates. Declare a title on
+every validated field: a field without one is named by its key. `code` is for your app's logic —
+highlight the field, focus it — and never chooses the text.
+
+A custom validator fails with a declared template through `message_error`, and names the
+templates it can fail with through `@declares`:
+
+```python
+from pydantic import BaseModel, Field, field_validator
+from langsys_fastapi.messages import declares, message_error
+
+class Signup(BaseModel):
+    username: str = Field(title="username")
+
+    @field_validator("username")
+    @declares("The username has already been taken.")
+    @classmethod
+    def available(cls, value: str) -> str:
+        if taken(value):
+            raise message_error("already_taken", "The username has already been taken.")
+        return value
+```
+
+A validator that raises a plain `ValueError` produces code `invalid`, with its text as the
+template.
+
+To register every template before any user sees one, list them with the base SDK's command and a
+provider over your app:
+
+```python
+# myapp/langsys.py
+from langsys_fastapi.messages import declared_templates
+from myapp.main import app
+
+def templates():
+    return declared_templates(app)
+```
+
+```bash
+python -m langsys.messages --provider myapp.langsys:templates              # list; non-zero on a problem
+python -m langsys.messages --provider myapp.langsys:templates --register   # and register them
+```
+
+The command names every field without a title and every validator that declares no templates,
+and exits non-zero, so it can gate CI. A template the listing did not cover is registered the
+first time it is emitted, after the response.
+
 ## Configuration
 
 `configure(...)` (call once at startup) or the environment:
@@ -105,13 +178,15 @@ the process is killed.
 | `base_locale` | `LANGSYS_BASE_LOCALE` | |
 | `cache_ttl` | `LANGSYS_CACHE_TTL` | |
 | `cache`, `timeout` | — | |
+| `message_category` | — | category validation templates are registered under; default `Errors` |
 
 Every option is the base SDK's own, passed through unchanged. Calling `configure()` again
 rebuilds the client — flushing the old client's queue first — so a later `api_url` takes
 effect even after the first translation.
 
-Middleware options only say where in a request the locale is read from: `query_param`
-(default `locale`), `cookie_name` (default `langsys_locale`) and `supported`.
+Middleware options only say where in a request your app keeps the locale: `query_param`
+(default `locale`) and `cookie_name` (default `langsys_locale`; `None` when the app keeps no locale
+cookie, so no response varies on one).
 
 If you install your own client with `set_client()`, build it with
 `locale_source=langsys_fastapi.locale.ContextVarLocaleSource()` so it reads the request
@@ -127,7 +202,8 @@ python3 -m venv .venv
 .venv/bin/pytest
 ```
 
-Live tests (`pytest -m integration`) run against a local Langsys stack and skip unless it is
+The contract tests start the fleet's shared API double (`tests/contract-fixture/`), which needs
+Node 18 or later. Live tests (`pytest -m integration`) run against a local Langsys stack and skip unless it is
 configured; see `tests/test_live.py` for the environment. Conformance to the Langsys SDK
 behaviour spec is recorded in [`CONFORMANCE.md`](CONFORMANCE.md).
 

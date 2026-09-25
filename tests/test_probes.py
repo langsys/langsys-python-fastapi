@@ -75,7 +75,8 @@ REPORT = r"hint|discovery"
 ICU = r"interpolate|plural|MessageFormat|babel"
 CID = r"custom_id|md5|hashlib|legacy"
 TOK = r"lxml|tokeniz|translatable_attributes|translate_page|translate_content_block|\bre\."
-MARK = r"data-ls|data-langsys|contentblock"
+MARK = r"data-ls|data-langsys|contentblock|resolved"
+MIGRATION = r"gettext|ngettext|msgid|legacy_key|\.po\b|legacy"
 
 #: rule -> (pattern that must not occur in this package's code, firing control)
 PROBES: dict[str, tuple[str, str]] = {
@@ -124,6 +125,23 @@ PROBES: dict[str, tuple[str, str]] = {
     "WIRE-2": (r"status_code|\b204\b|\.json\(\)", "if response.status_code == 204:\n    pass\n"),
     "WIRE-3": (r"__uncategorized__|locale\w*\.lower\(\)|normalize_locale", "wire = locale.lower()\n"),
     "WIRE-4": (r"\bauthorize\(|get_translations\(|\brefresh\(|httpx|urlopen", "project = client.authorize()\n"),
+    "GATE-9": (r"discovery_base_locale_only|base_locale_only", 'gate = data.get("discovery_base_locale_only")\n'),
+    "CACHE-2": (r"_failed_until|failure_window|negative_cache", "self._failed_until[key] = now + delay\n"),
+    "REG-13": (r"_catalog_loaded|first_read|settled", "if not self._catalog_loaded:\n    pass\n"),
+    "ICU-6": (ICU + r"|formatter", "formatter = MessageFormatter(locale)\n"),
+    "MARK-3": (MARK, 'host.set("data-ls-resolved", locale)\n'),
+    "MARK-4": (MARK, 'cid = host.get("data-langsys-contentblock")\n'),
+    "TOK-6": (TOK, 'text = re.sub(r"\\s+", " ", text)\n'),
+    **{f"MIG-{n}": (MIGRATION, "text = gettext(key)\n") for n in range(1, 10)},
+    "SNAP-1": (r"snapshot|export_catalog", "snapshot = export_catalog(categories)\n"),
+    "SNAP-3": (r"snapshot|export_catalog", "catalog = load_snapshot(path)\n"),
+    "MSG-5": (r"render_server_message|\.render\(", "text = client.render_server_message(entry)\n"),
+    "MSG-6": (r"DEFAULT_MESSAGE_CATEGORY|[\"']Errors[\"']", 'category = "Errors"\n'),
+    "MSG-8": (r"_queue_missing|register_templates", "client.register_templates(listing)\n"),
+    "MSG-11": (
+        r"LABEL_MARKERS|check_template|warn_translatable_marker_value|_FRAMEWORK_PLACEHOLDERS",
+        "check_template(template)\n",
+    ),
     "BIND-2": (CAPABILITY, DEFECT_29BB650),
     # `debounce` included: setting the core's debounce schedules sends from this layer.
     "BIND-3": (
@@ -153,9 +171,8 @@ def test_ABSENCE(rule):
 # -- BIND-4: no configuration the core does not define --------------------------
 
 CLIENT_OPTIONS = set(inspect.signature(LangsysClient.__init__).parameters) - {"self"}
-MATCHER_OPTIONS = set(inspect.signature(langsys.detect_preferred_locale).parameters)
-#: Where in an HTTP request the locale is read from. The core has no request, so it cannot
-#: define these, and none of them decides what the product does.
+#: Where in an HTTP request the app keeps the locale — SRV-6's wiring, which BIND-4 allows.
+#: The core has no request, so it cannot define these, and none decides what the product does.
 REQUEST_SHAPE = {"app", "query_param", "cookie_name"}
 
 
@@ -168,13 +185,13 @@ def introduced_by_middleware(fn) -> set:
     # A client option on the middleware is a second, differently scoped meaning for a name
     # the core already defines: 29bb650's `auto_flush` meant "discard the queue" here and
     # "flush at process exit" in the core.
-    return (params & CLIENT_OPTIONS) | (params - REQUEST_SHAPE - MATCHER_OPTIONS)
+    return (params & CLIENT_OPTIONS) | (params - REQUEST_SHAPE)
 
 
 def test_BIND4_the_middleware_introduces_only_request_shape_options():
     def at_29bb650(self, app, *, query_param="locale", cookie_name="c", supported=None, auto_flush=True): ...
 
-    assert introduced_by_middleware(at_29bb650) == {"auto_flush"}, "firing control"
+    assert introduced_by_middleware(at_29bb650) == {"auto_flush", "supported"}, "firing control"
     assert introduced_by_middleware(LangsysMiddleware.__init__) == set()
 
 

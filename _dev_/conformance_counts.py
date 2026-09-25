@@ -31,8 +31,8 @@ LANGSYS2 = Path.home() / "Documents" / "dev" / "langsys2"
 
 #: Pinned by commit, not by branch: a branch moves, and this must resolve the revision the
 #: rows were actually filed against.
-SPEC_COMMIT = "5cff03a17751e7dae9dcf1af52a9454d027c9006"
-SPEC_BLOB = "5c5c0723f88fb8e6b13f58876c7adca8b6b35691"
+SPEC_COMMIT = "a1b7568c7ebcc53d074d30665e2195c122ea6978"
+SPEC_BLOB = "b0474afba2c9c1639baa8da219fa6a441b3e1c2f"
 SPEC_PATH = "docs/sdk-spec.mdx"
 
 RULE_HEADING = re.compile(r"^### ([A-Z]+-\d+) ", re.M)

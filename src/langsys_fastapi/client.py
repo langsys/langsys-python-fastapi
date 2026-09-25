@@ -24,6 +24,7 @@ def configure(
     cache: Optional[Any] = None,
     cache_ttl: Optional[int] = None,
     timeout: Optional[float] = None,
+    message_category: Optional[str] = None,
 ) -> None:
     """Configure Langsys (typically in a FastAPI startup handler).
 
@@ -44,6 +45,7 @@ def configure(
             "cache": cache,
             "cache_ttl": cache_ttl,
             "timeout": timeout,
+            "message_category": message_category,
         }.items()
         if value is not None
     }
