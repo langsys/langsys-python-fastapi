@@ -86,18 +86,40 @@ MUTATIONS = [
     ),
     Mutation(
         "SRV-3",
-        "flush while the response is being sent, before its body",
+        "release and flush before the final body is sent",
         f"{PKG}/middleware.py",
         [(
-            "            await self.app(scope, receive, send)\n            completed = True\n",
-            "            async def send_then_flush(message: Any) -> None:\n"
-            '                if message["type"] == "http.response.body":\n'
-            "                    await self._flush(client)\n"
-            "                await send(message)\n\n"
-            "            await self.app(scope, receive, send_then_flush)\n"
-            "            completed = True\n",
+            "            await send(message)\n"
+            '            if message["type"] == "http.response.body"'
+            ' and not message.get("more_body"):\n'
+            "                client.end_request_scope(held)\n",
+            '            if message["type"] == "http.response.body"'
+            ' and not message.get("more_body"):\n'
+            "                client.end_request_scope(held)\n"
+            "                await self._flush(client)\n"
+            "            await send(message)\n",
         )],
         [f"{BOUNDARY}::test_SRV3_REG3_registration_happens_after_the_response_is_sent"],
+    ),
+    Mutation(
+        "SRV-3",
+        "never open the request scope",
+        f"{PKG}/middleware.py",
+        [(
+            "        held = client.begin_request_scope()\n",
+            '        held = __import__("langsys").RequestScope()\n',
+        )],
+        [
+            f"{BOUNDARY}::test_SRV3_a_slow_handler_sends_nothing_before_its_response",
+            f"{BOUNDARY}::test_SRV3_another_request_s_flush_sends_nothing_before_this_response",
+        ],
+    ),
+    Mutation(
+        "SRV-3",
+        "leave a raised request's scope open",
+        f"{PKG}/middleware.py",
+        [("            client.end_request_scope(held)\n            try:\n", "            try:\n")],
+        [f"{BOUNDARY}::test_SRV3_a_request_that_raised_releases_its_misses_after_the_error_response"],
     ),
     Mutation(
         "SRV-1",
@@ -148,17 +170,13 @@ MUTATIONS = [
     ),
     Mutation(
         "BIND-3",
-        "build the shared client with debounce=None (the reverted, ruled-out change)",
+        "build the shared client with debounce=None",
         f"{PKG}/client.py",
         [(
             "LangsysClient(locale_source=ContextVarLocaleSource(), **_config)",
             "LangsysClient(locale_source=ContextVarLocaleSource(), debounce=None, **_config)",
         )],
-        [
-            f"{PROBES}::test_ABSENCE[BIND-3]",
-            # strict xfail: hiding the core's timer makes the red-first test pass, which fails
-            f"{BOUNDARY}::test_SRV3_a_slow_handler_sends_nothing_before_its_response",
-        ],
+        [f"{PROBES}::test_ABSENCE[BIND-3]", f"{PROBES}::test_ABSENCE[REG-2]"],
     ),
     Mutation(
         "BIND-4",

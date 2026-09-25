@@ -125,8 +125,7 @@ PROBES: dict[str, tuple[str, str]] = {
     "WIRE-3": (r"__uncategorized__|locale\w*\.lower\(\)|normalize_locale", "wire = locale.lower()\n"),
     "WIRE-4": (r"\bauthorize\(|get_translations\(|\brefresh\(|httpx|urlopen", "project = client.authorize()\n"),
     "BIND-2": (CAPABILITY, DEFECT_29BB650),
-    # `debounce` since review: this binding once built its client with `debounce=None`, which
-    # hid a core timer sending mid-request and was ruled scheduling one layer too high.
+    # `debounce` included: setting the core's debounce schedules sends from this layer.
     "BIND-3": (
         r"httpx|urllib\.request|urlopen|\brequests\b|Timer\(|\bsleep\(|retry|backoff|atexit"
         r"|\bdebounce\b|\bX-[A-Z]",

@@ -71,26 +71,23 @@ so a single shared client is safe across concurrent requests.
 
 ## After the response
 
-Phrases missing from the catalog are queued while a request runs. Once the response has been
-sent, the middleware hands that queue to the base SDK's `flush_pending()`, and **the SDK
-decides** what happens to it — this package never looks at the key type or the write
-capability itself:
+Phrases missing from the catalog are queued while a request runs, under the base SDK's
+request scope: nothing a request queues can be sent — by the SDK's debounce timer or by
+another request finishing first — until that request's response has been sent. Once the
+final response body is out, the middleware ends the scope and hands the queue to the SDK's
+`flush_pending()`, and **the SDK decides** what happens to it — this package never looks at
+the key type or the write capability itself:
 
 - a **write-enabled** session registers them;
-- a session the server says is **not** write-enabled discards it — a read key registers
+- a session the server says is **not** write-enabled discards them — a read key registers
   nothing;
 - if write capability **could not be determined** (the API was unreachable), the queue is
   kept for the next attempt rather than lost.
 
-The middleware itself sends nothing before the response. Two paths can still send a
-request's phrases earlier, and are recorded as an open gap (SRV-3 in `CONFORMANCE.md`)
-pending a change in the base SDK: its debounce timer, which fires about 400 ms after a miss
-even while the handler is still running, and the end-of-request flush of a concurrent request,
-which sends everything queued — including phrases of requests still rendering.
-
 The middleware also resets the SDK's observed write decision at the end of every request, so
-one request's answer never carries into the next. A request whose handler raised is not
-flushed — its queue goes out with the next request, or at process exit.
+one request's answer never carries into the next. If a handler raises, its scope ends as the
+exception leaves the middleware and the SDK's debounce sends what it found shortly after, so
+the error response goes out first.
 
 For work done outside a request (startup code, background jobs), `get_langsys().flush_pending()`
 is the manual flush. The automatic flush at process exit is best-effort: it does not run if

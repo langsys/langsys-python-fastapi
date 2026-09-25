@@ -5,8 +5,10 @@ For each HTTP request it:
 1. resolves the locale (``?locale=`` -> ``langsys_locale`` cookie -> ``Accept-Language``),
    matching each candidate through the core's ``detect_preferred_locale`` against
    ``supported``, and exposes it to translations via the request-scoped context variable;
-2. once the app has returned — its response already sent — hands whatever the request
-   queued to the core's public ``flush_pending()``. Whether that registers, holds (the
+2. opens the core's request scope, so nothing the request queues can be sent — by the
+   core's debounce timer or by another request's flush — before its response is out. The
+   scope ends once the final response body has been sent, and the middleware then hands
+   the queue to the core's public ``flush_pending()``. Whether that registers, holds (the
    capability could not be determined) or discards (the server said no) is the core's
    decision, taken at its send site: this middleware never reads or branches on
    capability;
@@ -57,17 +59,27 @@ class LangsysMiddleware:
         client = get_client()
         locale = self._resolve(scope, client)
         token = set_current_locale(locale) if locale else None
+        # SRV-3 — the core holds whatever this request queues until the scope ends, whoever
+        # flushes in the meantime: its debounce timer or another request's flush.
+        held = client.begin_request_scope()
+
+        async def send_then_release(message: dict[str, Any]) -> None:
+            await send(message)
+            if message["type"] == "http.response.body" and not message.get("more_body"):
+                client.end_request_scope(held)
+
         completed = False
         try:
-            await self.app(scope, receive, send)
+            await self.app(scope, receive, send_then_release)
             completed = True
         finally:
             if token is not None:
                 reset_current_locale(token)
+            # Idempotent; covers a request that raised or sent no body. A raised request's
+            # misses are released here and the core's debounce sends them: a flush now would
+            # run before the error response an outer middleware has yet to send.
+            client.end_request_scope(held)
             try:
-                # A request that raised is left to the next request's flush (or the
-                # core's exit flush): flushing here would run before the error response
-                # an outer middleware has yet to send, on the visitor's time.
                 if completed:
                     await self._flush(client)
             finally:

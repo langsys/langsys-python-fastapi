@@ -134,6 +134,11 @@ def make_app(**options: Any) -> FastAPI:
         barrier.wait()
         return {"text": t("Pricing", "UI")}
 
+    @app.get("/raises")
+    def raises():
+        t("Phrase raised", "UI")
+        raise RuntimeError("handler failed")
+
     @app.get("/held")
     async def held(p: str):
         await at(p, "UI")
@@ -253,22 +258,9 @@ def test_SRV3_REG3_registration_happens_after_the_response_is_sent(httpx_mock, b
     assert events == [START, BODY, ("registered", ITEMS)]
 
 
-#: Red first, on purpose. SRV-3's order holds here only for a request that finishes inside
-#: the core's debounce window with no concurrent request finishing first. Both tests below
-#: are measured failures at this revision, waiting on a core seam requested from
-#: langsys-python; `strict` fails them the moment the seam lands, so the row has to flip.
-AWAITS_SCOPE_SEAM = pytest.mark.xfail(
-    strict=True,
-    reason="SRV-3 waits on a langsys-python seam: a miss recorded in a request scope is sent "
-    "by no flush until that scope's own response has been flushed",
-)
-
-
-@AWAITS_SCOPE_SEAM
 def test_SRV3_a_slow_handler_sends_nothing_before_its_response(httpx_mock, bound):
-    """Measured: the core's debounce timer (400ms) sends from its own thread while the handler
-    is still running — POST at 0.45s, response.start at 0.85s. Building the binding's client
-    with `debounce=None` hid it, and was ruled scheduling one layer too high (BIND-3)."""
+    """The core's debounce timer (400ms) fires while this handler is still running; the miss
+    it recorded is held by the request scope until the response has been sent."""
     events: list = []
     record_registrations(httpx_mock, events)
     asyncio.run(drive(make_app(), "/found", query=b"sleep=0.8", events=events))
@@ -290,11 +282,9 @@ def test_SRV3_a_read_only_key_pushes_nothing_and_a_write_key_on_the_same_render_
     assert queued(bound) == []
 
 
-@AWAITS_SCOPE_SEAM
 def test_SRV3_another_request_s_flush_sends_nothing_before_this_response(httpx_mock, bound):
-    """Measured, with no timer involved: the end-of-request flush drains the process-wide
-    queue, so a quick request finishing first registers a concurrent request's miss while
-    that request is still rendering. Ordered by events, not sleeps: the quick request waits
+    """A quick request's end-of-request flush sends only what its own scope released: a
+    concurrent request's miss waits for that request's response. Ordered by events, not sleeps: the quick request waits
     until the held one has recorded its miss, and the held one is released only once the
     quick one has been flushed."""
     events: list = []
@@ -322,6 +312,25 @@ def test_SRV3_another_request_s_flush_sends_nothing_before_this_response(httpx_m
     held_start = events.index(("held", "http.response.start"))
     sent_held = [i for i, e in enumerate(events) if e[0] == "registered" and "Held" in e[1]]
     assert sent_held and min(sent_held) > held_start, events
+
+
+def test_SRV3_a_request_that_raised_releases_its_misses_after_the_error_response(httpx_mock, bound):
+    """A request whose handler raised gets no flush of its own — one would run before
+    Starlette's error middleware sends the 500. Its scope ends as the exception leaves the
+    middleware, and the core's debounce sends the miss after the error response."""
+    events: list = []
+    record_registrations(httpx_mock, events)
+    app = make_app()
+
+    async def run():
+        with pytest.raises(RuntimeError):
+            await drive(app, "/raises", events=events)
+
+    asyncio.run(run())
+    deadline = time.monotonic() + 3
+    while ("registered", ITEMS) not in events and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert events == [START, BODY, ("registered", ITEMS)]
 
 
 # -- REG-2 / REG-3 -------------------------------------------------------------
