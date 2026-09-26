@@ -11,6 +11,7 @@ from starlette.concurrency import run_in_threadpool
 from .locale import ContextVarLocaleSource
 
 _config: dict[str, Any] = {}
+_snapshot: Optional[Any] = None
 _client: Optional[LangsysClient] = None
 _lock = threading.Lock()
 
@@ -25,6 +26,7 @@ def configure(
     cache_ttl: Optional[int] = None,
     timeout: Optional[float] = None,
     message_category: Optional[str] = None,
+    snapshot: Optional[Any] = None,
 ) -> None:
     """Configure Langsys (typically in a FastAPI startup handler).
 
@@ -33,8 +35,14 @@ def configure(
     option is the core client's own, passed through unchanged; ``api_url`` (or
     ``LANGSYS_API_URL``) points the client at a test double. Calling this again rebuilds
     the client, so a later call takes effect even after the first translation.
+
+    ``snapshot`` — a path, the snapshot's JSON or a ``langsys.snapshot.Snapshot`` — seeds the
+    client from an exported catalog when it is built, through the core's ``load_snapshot``
+    (SNAP-2): lookups it holds need no network, and while the API is unreachable it supplies the
+    locales a request may be served in.
     """
-    global _config
+    global _config, _snapshot
+    _snapshot = snapshot
     _config = {
         key: value
         for key, value in {
@@ -60,7 +68,10 @@ def get_client() -> LangsysClient:
     if _client is None:
         with _lock:
             if _client is None:
-                _client = LangsysClient(locale_source=ContextVarLocaleSource(), **_config)
+                client = LangsysClient(locale_source=ContextVarLocaleSource(), **_config)
+                if _snapshot is not None:
+                    client.load_snapshot(_snapshot)
+                _client = client
     return _client
 
 

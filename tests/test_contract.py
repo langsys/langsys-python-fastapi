@@ -186,7 +186,34 @@ def test_MSG8_a_template_the_catalog_lacks_is_registered_after_the_failed_respon
 
     with TestClient(app) as http:
         assert http.post("/signup", json={"password": "short"}).status_code == 422
-    assert double.phrases() == [
-        ("Errors", "The password must be at least {min} characters."),
-        ("Errors", "The request failed validation."),
-    ]
+    assert double.phrases() == [("Errors", "String should have at least {min_length} characters")]
+
+
+# -- SRV-6: a locale the app resolved itself -----------------------------------------------------------
+
+
+def app_resolved(value: Optional[str]) -> FastAPI:
+    """An app whose own middleware resolves the locale before LangsysMiddleware runs."""
+    app = locale_app()
+
+    @app.middleware("http")
+    async def resolve_it(request, call_next):
+        if value is not None:
+            request.state.locale = value
+        return await call_next(request)
+
+    return app
+
+
+@pytest.mark.parametrize(
+    ("resolved", "served"),
+    [("es-ES", "es-es"), ("es", "es-es"), ("fr-FR", "en-us")],
+    ids=["mapped-to-project-form", "bare-language-to-the-projects-default", "unsupported-to-the-base"],
+)
+def test_SRV6_a_locale_the_app_resolved_is_served_whatever_else_the_request_says(session, resolved, served):
+    session(READ_KEY)
+    with TestClient(app_resolved(resolved)) as http:
+        response = http.get(
+            "/page?locale=it-it", headers={"cookie": "langsys_locale=it-it", "accept-language": "it"}
+        )
+    assert (response.json()["locale"], varies(response)) == (served, [])

@@ -72,7 +72,7 @@ else:
 CAPABILITY = r"write_enabled|key_type|KeyType|can_write|_resolve_write_enabled|_observed_decision"
 CATALOG = r"get_translations|catalog|UNCATEGORIZED"
 REPORT = r"hint|discovery"
-ICU = r"interpolate|plural|MessageFormat|babel"
+ICU = r"interpolate|MessageFormat|babel|\bplural\(|PluralRule"
 CID = r"custom_id|md5|hashlib|legacy"
 TOK = r"lxml|tokeniz|translatable_attributes|translate_page|translate_content_block|\bre\."
 MARK = r"data-ls|data-langsys|contentblock|resolved"
@@ -95,7 +95,7 @@ PROBES: dict[str, tuple[str, str]] = {
         r"\bdebounce\b|Timer\(|_schedule_flush|call_later|create_task",
         "self._timer = threading.Timer(delay, self._debounced_flush)\n",
     ),
-    "REG-6": (r"\b_pending\b|_pending_blocks|clear_pending|snapshot", "self._pending.clear()\n"),
+    "REG-6": (r"\b_pending\b|_pending_blocks|clear_pending|_sent_keys", "self._pending.clear()\n"),
     "REG-7": (r"_sending|in_flight|Semaphore", "if not self._sending.acquire(blocking=False):\n    pass\n"),
     "REG-8": (r"backoff|retry|\bsleep\(", "time.sleep(self._backoff_seconds)\n"),
     "REG-9": (r"batch_limit|chunk", 'limit = settings["batch_limit"]\n'),
@@ -105,8 +105,8 @@ PROBES: dict[str, tuple[str, str]] = {
     "HINT-2": (REPORT, 'http.post("discovery/hint", json={"url": url})\n'),
     "ICU-1": (ICU, "text = interpolate(text, params, locale)\n"),
     "ICU-2": (ICU, "text = interpolate(text, {k: v for k, v in params.items()}, locale)\n"),
-    "ICU-3": (ICU, 'text = text.replace("#", "{" + plural_arg + "}")\n'),
-    "ICU-4": (ICU, 'logger.debug("recovered plural argument %s", name)\n'),
+    "ICU-3": (ICU, 'text = interpolate(template, {"count": None}, locale)\n'),
+    "ICU-4": (ICU, "recovered = interpolate(template, params, locale)\n"),
     "ICU-5": (ICU, "from babel import plural\n"),
     "CID-1": (CID, "cid = hashlib.md5(payload).hexdigest()\n"),
     "CID-2": (CID, 'custom_id = generate(category or "", tokens)\n'),
@@ -122,7 +122,7 @@ PROBES: dict[str, tuple[str, str]] = {
     "CACHE-1": (r"cache\.(get|set)\(|cache_key|[\"']auth_|[\"']translations_", 'self._cache.set(f"translations_{locale}", catalog)\n'),
     "OBS-1": (r"write-enabled|_warned_unusable|_notice_unusable", 'logger.warning("this session is not write-enabled")\n'),
     "WIRE-1": (r"Authorization|X-Write-Grant|Bearer", 'headers = {"X-Authorization": key}\n'),
-    "WIRE-2": (r"status_code|\b204\b|\.json\(\)", "if response.status_code == 204:\n    pass\n"),
+    "WIRE-2": (r"status_code\s*(==|!=)|\b204\b|\.json\(\)", "if response.status_code == 204:\n    pass\n"),
     "WIRE-3": (r"__uncategorized__|locale\w*\.lower\(\)|normalize_locale", "wire = locale.lower()\n"),
     "WIRE-4": (r"\bauthorize\(|get_translations\(|\brefresh\(|httpx|urlopen", "project = client.authorize()\n"),
     "GATE-9": (r"discovery_base_locale_only|base_locale_only", 'gate = data.get("discovery_base_locale_only")\n'),
@@ -133,9 +133,8 @@ PROBES: dict[str, tuple[str, str]] = {
     "MARK-4": (MARK, 'cid = host.get("data-langsys-contentblock")\n'),
     "TOK-6": (TOK, 'text = re.sub(r"\\s+", " ", text)\n'),
     **{f"MIG-{n}": (MIGRATION, "text = gettext(key)\n") for n in range(1, 10)},
-    "SNAP-1": (r"snapshot|export_catalog", "snapshot = export_catalog(categories)\n"),
-    "SNAP-2": (r"snapshot|export_catalog", "client.seed(load_snapshot(path))\n"),
-    "SNAP-3": (r"snapshot|export_catalog", "catalog = load_snapshot(path)\n"),
+    "SNAP-1": (r"export_catalog|Snapshot\.export|\.export\(", "snapshot = Snapshot.export(client, locales, categories)\n"),
+    "SNAP-3": (r"checksum|Snapshot\.load|\.write_text\(", "snapshot = Snapshot.load(path)\n"),
     "MSG-5": (r"render_server_message|\.render\(", "text = client.render_server_message(entry)\n"),
     "MSG-6": (r"DEFAULT_MESSAGE_CATEGORY|[\"']Errors[\"']", 'category = "Errors"\n'),
     "MSG-8": (r"_queue_missing|register_templates", "client.register_templates(listing)\n"),
@@ -169,26 +168,26 @@ def test_ABSENCE(rule):
     assert count(pattern, package_code()) == 0
 
 
-def test_MSG2_the_spec_table_sentences_come_from_the_core_not_a_copy_here():
-    """MSG-2's table is the core's `WORDINGS`: none of its sentences is written into this package,
-    so the two cannot drift apart."""
-    from langsys.messages import WORDINGS
-
-    sentences = [re.escape(template) for _, template in WORDINGS.values()]
-    assert count("|".join(sentences), [code_only('x = "This field is not allowed."\n')]) == 1, "control"
-    assert count("|".join(sentences), package_code()) == 0
+def test_MSG2_no_vocabulary_or_wording_of_ours_stands_in_for_pydantics():
+    """Codes are Pydantic's own and templates its own sentences: nothing here maps them onto a
+    shared vocabulary or a wording table."""
+    pattern = r"MESSAGE_CODES|WORDINGS|size_code|with_label|RuleWording"
+    assert count(pattern, [code_only("code = size_code(value, 'small')\n")]) == 1, "firing control"
+    assert count(pattern, package_code()) == 0
 
 
 # -- BIND-4: no configuration the core does not define --------------------------
 
 CLIENT_OPTIONS = set(inspect.signature(LangsysClient.__init__).parameters) - {"self"}
+#: The core's seed seam (SNAP-2): `configure(snapshot=)` hands its value to `load_snapshot`.
+SEAM_OPTIONS = set(inspect.signature(LangsysClient.load_snapshot).parameters) - {"self"}
 #: Where in an HTTP request the app keeps the locale — SRV-6's wiring, which BIND-4 allows.
 #: The core has no request, so it cannot define these, and none decides what the product does.
-REQUEST_SHAPE = {"app", "query_param", "cookie_name", "path_segment", "subdomain"}
+REQUEST_SHAPE = {"app", "query_param", "cookie_name", "path_segment", "subdomain", "state_key"}
 
 
 def introduced_by_configure(fn) -> set:
-    return set(inspect.signature(fn).parameters) - CLIENT_OPTIONS
+    return set(inspect.signature(fn).parameters) - CLIENT_OPTIONS - SEAM_OPTIONS
 
 
 def introduced_by_middleware(fn) -> set:

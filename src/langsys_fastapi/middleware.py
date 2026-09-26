@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
+from collections.abc import Mapping
 from http.cookies import CookieError, SimpleCookie
 from typing import Any, Optional
 from urllib.parse import parse_qs
@@ -48,9 +49,12 @@ class LangsysMiddleware:
     * ``subdomain`` — the first label of the host carries it (``es.example.com``);
     * ``query_param`` — the query parameter that carries it;
     * ``cookie_name`` — the cookie the app keeps it in; ``None`` when there is none, so no
-      response varies on one.
+      response varies on one;
+    * ``state_key`` — the ``request.state`` attribute an app's own middleware, running before
+      this one, sets once it has resolved the locale itself. That locale is served as the app
+      resolved it (the core validates and maps it) and nothing else is consulted.
 
-    The URL's value is the first of those present, in that order; the core validates it."""
+    The URL's value is the first of the URL knobs present, in that order; the core validates it."""
 
     def __init__(
         self,
@@ -60,12 +64,14 @@ class LangsysMiddleware:
         cookie_name: Optional[str] = "langsys_locale",
         path_segment: Optional[int] = None,
         subdomain: bool = False,
+        state_key: Optional[str] = "locale",
     ) -> None:
         self.app = app
         self.query_param = query_param
         self.cookie_name = cookie_name
         self.path_segment = path_segment
         self.subdomain = subdomain
+        self.state_key = state_key
 
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
         if scope.get("type") != "http":
@@ -130,7 +136,12 @@ class LangsysMiddleware:
             morsel = jar.get(self.cookie_name)
             cookie = morsel.value if morsel else None
 
+        state = scope.get("state")
+        app_locale = (
+            state.get(self.state_key) if self.state_key and isinstance(state, Mapping) else None
+        )
         return client.resolve_request_locale(
+            framework=app_locale if isinstance(app_locale, str) and app_locale else None,
             url=self._url_locale(scope, headers, query),
             cookie=cookie,
             accept_language=headers.get("accept-language"),

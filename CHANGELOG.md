@@ -14,16 +14,14 @@ All notable changes to this project are documented here. The format follows
   choice depended on; a synchronous `t()` helper plus an async `at()` that runs the blocking SDK
   call in a threadpool; and dependency-injection access to the client and the current locale
   (`get_langsys`, `current_locale`).
-- Validation errors as translatable server messages: `langsys_fastapi.messages.install(app)`
-  answers a failed request with entries built from the Pydantic rules that failed, each a whole
-  sentence with the field's `title` written in; `message_error()` and `@declares` for custom
-  validators; and `declared_templates(app)`, a provider for the SDK's listing command.
-- A request-safe shared client whose locale comes from a `contextvars` context variable, so one
-  instance serves concurrent requests, each in its own language.
-- Registration after the response: phrases a request discovers are held under the SDK's
-  request scope until its response has been sent, then handed to the SDK's `flush_pending()`,
-  which registers, keeps or discards them as the server decides. The observed write decision
-  is reset at the end of every request.
+- Validation errors made translatable without changing them:
+  `langsys_fastapi.messages.install(app)` keeps FastAPI's own 422 body and attaches an entry per
+  error under a configurable key (`langsys_errors` by default) — Pydantic's error type as `code`, its `loc` as `field`, and its
+  own sentence as `template` with `params` filling its markers; `@declares` names a custom
+  validator's templates; and `declared_templates(app)` is a provider for the SDK's listing
+  command.
+- `configure(snapshot=…)` seeds the client from an exported catalog snapshot at startup.
+- A locale an app resolves itself and sets on `request.state.locale` is served as it resolved it.
 - `configure()` rebuilds the client, flushing the previous client's queue first, so a later
   `api_url` takes effect even after the first translation.
 - `CONFORMANCE.md`, grading every rule of the Langsys SDK behaviour spec against this package,

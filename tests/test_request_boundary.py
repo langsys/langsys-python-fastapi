@@ -453,3 +453,29 @@ def test_a_non_utf8_header_byte_does_not_fail_the_request(httpx_mock, bound):
     with TestClient(locale_app()) as http:
         response = http.get("/locale?locale=es-ES", headers={"x-legacy": b"caf\xe9"})
     assert response.json()["locale"].lower() == "es-es"
+
+
+# -- SNAP-2: seeded at startup --------------------------------------------------------------------
+
+
+def test_SNAP2_a_snapshot_given_to_configure_seeds_the_client_and_answers_with_no_network():
+    """The API is unreachable (a closed port): what the snapshot holds is translated, and a
+    phrase it lacks falls back to its source text."""
+    from langsys.snapshot import Snapshot
+
+    snapshot = Snapshot({
+        "project_id": "proj-1", "generated_at": "2026-09-25T00:00:00Z", "base_locale": "en-us",
+        "locales": ["es-es"], "categories": ["UI"], "catalog": {"es-es": {"UI": {"Pricing": "Precios"}}},
+    })
+    configure(
+        api_key="k", project_id="proj-1", api_url="http://127.0.0.1:9/api", base_locale="en-US",
+        cache=MemoryCache(), timeout=0.5, snapshot=snapshot,
+    )
+    token = set_current_locale("es-ES")
+    try:
+        assert t("Pricing", "UI") == "Precios"
+        assert t("Not in the snapshot", "UI") == "Not in the snapshot"
+    finally:
+        reset_current_locale(token)
+        get_client().clear_pending()
+        configure()

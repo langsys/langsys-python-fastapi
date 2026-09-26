@@ -62,7 +62,13 @@ def countries(langsys: LangsysClient = Depends(get_langsys), loc: str = Depends(
 
 ## How the locale is resolved
 
-`LangsysMiddleware` asks the base SDK which locale to serve, in order: the URL — the path
+If your app resolves the locale itself, set it on `request.state.locale` in a middleware that
+runs before `LangsysMiddleware` (add it after `LangsysMiddleware`, since Starlette runs the
+last-added middleware first). That locale is served — mapped to the project's form, a bare `es`
+to the project's default Spanish, an unsupported one as the base locale — and nothing else is
+consulted.
+
+Otherwise `LangsysMiddleware` asks the base SDK which locale to serve, in order: the URL — the path
 segment, subdomain or `?locale=` your app routes by — then the `langsys_locale` cookie, then `Accept-Language`, and otherwise the project's base locale.
 Every candidate is checked against the locales the project serves — its base and target
 locales — and an unsupported one is skipped. The middleware never writes the cookie; your app
@@ -99,53 +105,55 @@ the process is killed.
 
 ## Validation errors
 
-`install(app)` answers a failed request validation with the langsys envelope. Each failure is an
-entry built from the rule that failed — never from Pydantic's rendered text:
+`install(app)` makes FastAPI's validation errors translatable without changing them. FastAPI still
+answers a failed request with its own 422 body; each error also gets an entry beside it, under
+`langsys_errors`:
 
 ```python
 from langsys_fastapi.messages import install
 
-install(app)
+install(app)   # or install(app, key="translations")
 ```
 
 ```json
-{"status": false,
- "error": {"code": "validation_failed", "message": "The request failed validation.",
-           "template": "The request failed validation.",
-           "errors": [{"field": "password", "code": "too_short",
-                       "message": "The password must be at least 12 characters.",
-                       "template": "The password must be at least {min} characters.",
-                       "params": {"min": 12}}]}}
+{"detail": [{"type": "string_too_short", "loc": ["body", "password"],
+             "msg": "String should have at least 12 characters", "input": "short",
+             "ctx": {"min_length": 12}}],
+ "langsys_errors": [{"template": "String should have at least {min_length} characters",
+                     "params": {"min_length": 12},
+                     "message": "String should have at least 12 characters",
+                     "field": ["body", "password"], "code": "string_too_short"}]}
 ```
 
-An entry's `template` is a whole sentence with the field's label written in, taken from
-`Field(title=…)` or `Query(title=…)`; `params` hold only numbers and dates. Declare a title on
-every validated field: a field without one is named by its key. `code` is for your app's logic —
-highlight the field, focus it — and never chooses the text.
+An entry's `code` is Pydantic's error `type` and its `field` Pydantic's `loc`, unchanged.
+`template` is Pydantic's own sentence before its values are filled — the phrase a translator
+sees — and `params` fill its markers; `message` is Pydantic's own `msg`. A client renders the
+entry through the SDK and falls back to `message`.
 
-A custom validator fails with a declared template through `message_error`, and names the
-templates it can fail with through `@declares`:
+A custom validator raises Pydantic's `PydanticCustomError` as usual. Naming its templates with
+`@declares` lets the listing below register them ahead of time:
 
 ```python
-from pydantic import BaseModel, Field, field_validator
-from langsys_fastapi.messages import declares, message_error
+from pydantic import BaseModel, field_validator
+from pydantic_core import PydanticCustomError
+from langsys_fastapi.messages import declares
 
 class Signup(BaseModel):
-    username: str = Field(title="username")
+    username: str
 
     @field_validator("username")
-    @declares("The username has already been taken.")
+    @declares("The username {name} is taken.")
     @classmethod
     def available(cls, value: str) -> str:
         if taken(value):
-            raise message_error("already_taken", "The username has already been taken.")
+            raise PydanticCustomError("username_taken", "The username {name} is taken.", {"name": value})
         return value
 ```
 
-A validator that raises a plain `ValueError` produces code `invalid`, with its text as the
-template.
+A validator that raises a plain `ValueError` produces Pydantic's `Value error, …` sentence, with
+its text written in.
 
-To register every template before any user sees one, list them with the base SDK's command and a
+To register templates before any user sees one, list them with the base SDK's command and a
 provider over your app:
 
 ```python
@@ -158,13 +166,14 @@ def templates():
 ```
 
 ```bash
-python -m langsys.messages --provider myapp.langsys:templates              # list; non-zero on a problem
+python -m langsys.messages --provider myapp.langsys:templates              # list
 python -m langsys.messages --provider myapp.langsys:templates --register   # and register them
 ```
 
-The command names every field without a title and every validator that declares no templates,
-and exits non-zero, so it can gate CI. A template the listing did not cover is registered the
-first time it is emitted, after the response.
+The command also reports what it cannot list ahead of time — a sentence Pydantic fills with its
+parser's own text, a validator that declares no templates — each with where it is. Those register
+the first time they are emitted, after the response. Add `--strict` to make any such report fail
+the command, for a team that wants no error ever shown untranslated.
 
 ## Configuration
 
@@ -179,6 +188,7 @@ first time it is emitted, after the response.
 | `cache_ttl` | `LANGSYS_CACHE_TTL` | |
 | `cache`, `timeout` | — | |
 | `message_category` | — | category validation templates are registered under; default `Errors` |
+| `snapshot` | — | an exported catalog snapshot — a path, its JSON or a `Snapshot` — the client is seeded with when it is built: lookups it holds need no network |
 
 Every option is the base SDK's own, passed through unchanged. Calling `configure()` again
 rebuilds the client — flushing the old client's queue first — so a later `api_url` takes
@@ -192,6 +202,7 @@ Middleware options only say where in a request your app keeps the locale:
 | `subdomain` | `False` | the host's first label holds the locale — `es.example.com` |
 | `query_param` | `locale` | query parameter holding the locale |
 | `cookie_name` | `langsys_locale` | cookie holding the locale; `None` when the app keeps none, so no response varies on one |
+| `state_key` | `locale` | the `request.state` attribute an app that resolves the locale itself sets |
 
 The URL's locale is the first of `path_segment`, `subdomain` and `query_param` present.
 

@@ -185,8 +185,9 @@ MUTATIONS = [
         "give the middleware the 29bb650 auto_flush option back",
         f"{PKG}/middleware.py",
         [(
-            "        subdomain: bool = False,\n    ) -> None:\n",
-            "        subdomain: bool = False,\n        auto_flush: bool = True,\n    ) -> None:\n",
+            '        state_key: Optional[str] = "locale",\n    ) -> None:\n',
+            '        state_key: Optional[str] = "locale",\n'
+            "        auto_flush: bool = True,\n    ) -> None:\n",
         )],
         [f"{PROBES}::test_BIND4_the_middleware_introduces_only_request_shape_options"],
     ),
@@ -262,55 +263,68 @@ MUTATIONS = [
     ),
     Mutation(
         "SRV-6",
+        "ignore the locale the app resolved itself",
+        f"{PKG}/middleware.py",
+        [(
+            "            framework=app_locale if isinstance(app_locale, str) "
+            "and app_locale else None,\n",
+            "            framework=None,\n",
+        )],
+        [
+            f"{CONTRACT}::test_SRV6_a_locale_the_app_resolved_is_served_whatever_else_the_request_says"
+            "[mapped-to-project-form]",
+        ],
+    ),
+    Mutation(
+        "SRV-6",
         "never offer the cookie as a candidate",
         f"{PKG}/middleware.py",
         [("            cookie=cookie,\n", "            cookie=None,\n")],
         [f"{CONTRACT}::test_SRV6_one_url_resolves_url_then_cookie_then_header_each_validated"],
     ),
     Mutation(
-        "MSG-9",
-        "build the template from Pydantic's rendered text",
+        "MSG-1",
+        "replace FastAPI's own 422 body with the entries alone",
         f"{PKG}/messages.py",
         [(
-            "            code, template, params = _rule("
-            'kind, dict(error.get("ctx") or {}), label, annotation)\n',
-            '            code, template, params = "invalid", str(error.get("msg")), {}\n',
+            "        attach_server_messages(body, entries, key)\n",
+            "        body = {key: entries}\n",
         )],
-        [
-            f"{MESSAGES}::test_MSG9_entries_are_built_from_the_failed_rules",
-            f"{MESSAGES}::test_MSG9_the_canonical_reference_entry_is_what_a_failed_min_length_produces",
-            f"{MESSAGES}::test_MSG2_codes_come_from_the_vocabulary_and_size_codes_follow_the_field_type",
-        ],
+        [f"{MESSAGES}::test_MSG1_fastapis_own_body_is_unchanged_and_the_entries_ride_beside_it"],
     ),
     Mutation(
         "MSG-2",
-        "word an extra field with its label instead of the spec table's sentence",
+        "map Pydantic's error type onto a code of ours",
         f"{PKG}/messages.py",
         [(
-            '    "extra_forbidden": WORDINGS["extra_field"],\n',
-            '    "extra_forbidden": ("not_allowed", "The :attribute is not allowed."),\n',
+            '        code = str(error.get("type", ""))\n',
+            '        code = "invalid"\n',
         )],
+        [f"{MESSAGES}::test_MSG2_code_field_and_message_are_pydantics_own"],
+    ),
+    Mutation(
+        "MSG-3",
+        "write numbers into the sentence instead of leaving them markers",
+        f"{PKG}/messages.py",
+        [("        elif name in ctx and _is_value(ctx[name]):\n", "        elif False:\n")],
         [
-            f"{MESSAGES}::test_MSG2_the_spec_table_words_lt_extra_fields_and_objects",
-            f"{MESSAGES}::test_MSG7_the_listing_covers_the_spec_table_templates",
+            f"{MESSAGES}::test_MSG3_MSG9_each_template_is_pydantics_sentence_before_its_values_are_filled",
+            f"{MESSAGES}::test_MSG4_numbers_are_params_and_the_filled_template_is_the_message",
         ],
     ),
     Mutation(
-        "MSG-10",
-        "label a field by its key instead of its declared title",
+        "MSG-7",
+        "ignore the templates a validator declares",
         f"{PKG}/messages.py",
-        [("    return (title or key), node\n", "    return key, node\n")],
-        [f"{MESSAGES}::test_MSG10_the_declared_title_is_the_label_not_the_key"],
+        [("        if declared is not None:\n", "        if False:\n")],
+        [f"{MESSAGES}::test_MSG7_what_cannot_be_listed_is_reported_with_where_and_what_to_do"],
     ),
     Mutation(
-        "MSG-7",
-        "list an unlabelled field under its key instead of reporting it",
-        f"{PKG}/messages.py",
-        [(
-            '    label = getattr(info, "title", None)\n    if not label:\n',
-            '    label = getattr(info, "title", None) or path\n    if not label:\n',
-        )],
-        [f"{MESSAGES}::test_MSG7_MSG10_a_validated_field_with_no_label_fails_the_listing_by_name"],
+        "SNAP-2",
+        "never seed the client from the configured snapshot",
+        f"{PKG}/client.py",
+        [("                if _snapshot is not None:\n", "                if False:\n")],
+        [f"{BOUNDARY}::test_SNAP2_a_snapshot_given_to_configure_seeds_the_client_and_answers_with_no_network"],
     ),
 ]
 
