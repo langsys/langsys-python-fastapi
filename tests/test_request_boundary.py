@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
 import threading
 import time
@@ -479,3 +480,18 @@ def test_SNAP2_a_snapshot_given_to_configure_seeds_the_client_and_answers_with_n
         reset_current_locale(token)
         get_client().clear_pending()
         configure()
+
+
+# -- REG-10: a skipped write is the core's to name --------------------------------------------------
+
+
+def test_REG10_a_skipped_write_is_named_by_the_core_and_nothing_here_reports_success(httpx_mock, bound, caplog):
+    """The binding never reads a flush's result, so it cannot turn a skip into success: the core
+    names the skip in its own log, and the response is the app's own."""
+    httpx_mock.add_response(url=TRANS, json=envelope(), is_reusable=True)
+    httpx_mock.add_response(url=AUTH, json=auth("read", False), is_reusable=True)
+    with caplog.at_level(logging.WARNING, logger="langsys"), TestClient(make_app()) as http:
+        response = http.get("/found")
+    assert response.json() == {"texts": ["Phrase 0"]}
+    assert "not write-enabled; discarding 1 phrase(s)" in caplog.text
+    assert queued(bound) == []

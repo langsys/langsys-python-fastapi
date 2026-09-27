@@ -2,20 +2,20 @@
 
 | | |
 |---|---|
-| **Spec revision read** | langsys2 a95af2c2…, docs/sdk-spec.mdx blob 5d7e6890b733a50fb6f5f5c30e0056c6ef7bcf45 |
+| **Spec revision read** | langsys2 234eab14…, docs/sdk-spec.mdx blob 7eee2c10398a1032831837c310215f3b9f16d306 |
 | **Profiles** | server, binding — derived: binding over langsys-python |
 | **SDK** | `langsys-fastapi`, the FastAPI/Starlette binding |
-| **specVersion** | 8.2.18 |
+| **specVersion** | 8.2.20 |
 | **SDK revision** | `feature/838_write_key_gating`, cut from `main` `29bb650` |
-| **Core revision** | `langsys-python` `e834170e0830475f8d4640f33f0e5ac8ec31d0ca`, as a clean `git archive` — see *Reproducing* |
+| **Core revision** | `langsys-python` `17c84d29bf3d9846bcea055b1b02f1fe91995567`, as a clean `git archive` — see *Reproducing* |
 | **Message vectors** | `tests/fixtures/server-message-vectors.json`, blob `7333e3919dac43af81c6c20bfdba974efd79725b`, vendored from the core |
 | **Contract fixture** | `tests/contract-fixture/`, tree `542f57f5ffcb9038db1b7411152b7e31b96cb269`, vendored byte-exact with the core's harness `tests/contract.py` |
 | **Published** | Never — PyPI and TestPyPI both 404 (positive control: `httpx` → 200) |
-| **Suite** | 121 passed by default, the contract tests included; 5 live under `pytest -m integration`, all passing against the local stack |
+| **Suite** | 122 passed by default, the contract tests included; 5 live under `pytest -m integration`, all passing against the local stack |
 
-Spec version implemented: **v8.2.18**, blob `5d7e6890b733a50fb6f5f5c30e0056c6ef7bcf45`. The blob is
+Spec version implemented: **v8.2.20**, blob `7eee2c10398a1032831837c310215f3b9f16d306`. The blob is
 re-derived on every write of this file, from the commit rather than a branch:
-`git -C ~/Documents/dev/langsys2 rev-parse a95af2c2596d5a882473d9ef09d232eb5c1d7a12:docs/sdk-spec.mdx`.
+`git -C ~/Documents/dev/langsys2 rev-parse 234eab14cd8787ad9b4a8c51287590865adff69a:docs/sdk-spec.mdx`.
 `_dev_/conformance_counts.py` refuses to count if it moves. No per-rule revision is recorded:
 the blob citation is complete without one.
 
@@ -59,11 +59,11 @@ and the seeder upserts, so `php artisan db:seed` recreates the fixture exactly. 
 asserts HTTP acceptance only: the local stack runs with queue workers down.
 
 **Delegation.** A `delegated` row cites the core's row in `langsys-python`'s `CONFORMANCE.md` at
-`e834170`, graded as that file grades it; that file grades spec 8.2.18. Each delegated row carries an
+`17c84d2`, graded as that file grades it; that file grades spec 8.2.20. Each delegated row carries an
 absence probe, `tests/test_probes.py::test_ABSENCE[<rule>]`: it reads this package's code only
 (docstrings and comments blanked), asserts it read all 6 files, and carries a firing control, a
 snippet the same filter must catch. The count beside each probe is the same pattern run over the
-core at `e834170`; a core count of 0 means the core has no such code either, and the firing
+core at `17c84d2`; a core count of 0 means the core has no such code either, and the firing
 control alone carries the proof.
 
 ---
@@ -75,11 +75,11 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 
 | Status | Count | |
 |---|---|---|
-| `implemented` | 23 | 3 `live` (REG-3, SRV-1, CONF-1) · 2 `contract` (SRV-3, SRV-6) · 18 `n/a (pure)` |
+| `implemented` | 24 | 3 `live` (REG-3, SRV-1, CONF-1) · 2 `contract` (SRV-3, SRV-6) · 19 `n/a (pure)` |
 | `delegated` | 63 | graded on the core's rows — see gaps |
 | `n/a (profile: browser)` | 21 | |
 | `n/a (architecture: …)` | 6 | GATE-10, HINT-13, SRV-4, SRV-5, MSG-10, MSG-12 |
-| **total** | **113** | |
+| **total** | **114** | |
 
 ## Status
 
@@ -95,9 +95,9 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 | GATE-8 | delegated | - | Core: implemented, contract. Probe `test_ABSENCE[GATE-8]`: 0 here, 59 in core |
 | GATE-9 | n/a (profile: browser) | - | The base-locale discovery gate is a browser client's |
 | GATE-10 | n/a (architecture: this binding renders no HTML of its own, so it has no root or element to mark and no DOM host that reads a mark, live if it adds a template integration) | - | The core's `translate_page()`, reachable through the DI client, is the producer on this stack and marks its root off the base locale |
-| CAT-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CAT-1]`: no catalog read here, 0 here, 94 in core |
-| CAT-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CAT-2]`: 0 here, 94 in core |
-| CAT-3 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CAT-3]`: 0 here, 123 in core |
+| CAT-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CAT-1]`: no catalog read here, 0 here, 97 in core |
+| CAT-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CAT-2]`: 0 here, 97 in core |
+| CAT-3 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CAT-3]`: 0 here, 126 in core |
 | REG-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[REG-1]`: no registration call or POST here, 0 here, 10 in core |
 | REG-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[REG-2]`: no debounce, timer or task here, 0 here, 13 in core. `test_REG2_everything_one_request_found_goes_out_as_one_request` shows a five-miss request going out as one request with no flush in the app |
 | REG-3 | implemented | live | The execution context this binding owns is the request: once the response is out, the middleware hands the queue to the core's public `flush_pending()`, and `reset_client()` and `configure()` flush a retired client before closing it. Live: `tests/test_live.py::test_LIVE_SRV3_REG3_accepted_after_the_response_and_never_from_a_read_key[CONTROL-write-key-on-the-same-render-pushes]` — the stack answered the POST 2xx and the queue is empty. Also `test_REG3_reconfiguring_hands_the_retired_client_s_queue_to_the_core_first`. Mutations: dropping the end-of-request flush reddens 3 named tests; closing without flushing reddens 1. The manual flush is the core's, reachable as `get_langsys().flush_pending()` and documented in the README |
@@ -107,7 +107,7 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 | REG-7 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[REG-7]`: 0 here, 3 in core. The lock here guards building the client, not sending |
 | REG-8 | delegated | - | Core: implemented, contract. Probe `test_ABSENCE[REG-8]`: no retry or backoff here, 0 here, 20 in core. The shared client outlives every request, so the core's failure clock does too |
 | REG-9 | delegated | - | Core: implemented, contract. Probe `test_ABSENCE[REG-9]`: 0 here, 13 in core |
-| REG-10 | delegated | - | Core: implemented, live. Probe `test_ABSENCE[REG-10]`: this package returns no flush result, 0 here, 14 in core. Its end-of-request guard logs and never raises past a response already sent |
+| REG-10 | delegated | - | Core: implemented, contract. Probe `test_ABSENCE[REG-10]`: this package returns no flush result, 0 here, 20 in core. Its end-of-request guard logs and never raises past a response already sent. Binding-side, measured: `test_request_boundary.py::test_REG10_a_skipped_write_is_named_by_the_core_and_nothing_here_reports_success` — the middleware never reads a flush's result, so a skip cannot surface here as success; a read-only request's skip is named in the core's own log (`not write-enabled; discarding 1 phrase(s)`) and the response is the app's own |
 | REG-11 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[REG-11]`: 0 here, 14 in core |
 | REG-12 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[REG-12]`: 0 here, 30 in core |
 | REG-13 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[REG-13]`: no catalog-load state here, 0 here, 0 in core |
@@ -130,20 +130,20 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 | ICU-4 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[ICU-4]`: 0 here, 22 in core |
 | ICU-5 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[ICU-5]`: 0 here, 22 in core |
 | ICU-6 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[ICU-6]`: no formatter here, 0 here, 23 in core |
-| CID-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-1]`: no hashing or ids here, 0 here, 78 in core |
-| CID-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-2]`: 0 here, 78 in core |
-| CID-3 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-3]`: 0 here, 78 in core |
-| CID-4 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-4]`: 0 here, 78 in core |
+| CID-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-1]`: no hashing or ids here, 0 here, 79 in core |
+| CID-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-2]`: 0 here, 79 in core |
+| CID-3 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-3]`: 0 here, 79 in core |
+| CID-4 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CID-4]`: 0 here, 79 in core |
 | TOK-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[TOK-1]`: no parser or tokenizer here, 0 here, 66 in core. HTML paths are reachable only through the DI client, which is the core itself (BIND-6) |
 | TOK-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[TOK-2]`: 0 here, 66 in core |
 | TOK-3 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[TOK-3]`: 0 here, 66 in core |
 | TOK-4 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[TOK-4]`: 0 here, 66 in core |
 | TOK-5 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[TOK-5]`: 0 here, 66 in core |
 | TOK-6 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[TOK-6]`: 0 here, 66 in core |
-| MARK-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[MARK-1]`: no identity or resolved attribute here, 0 here, 27 in core |
-| MARK-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[MARK-2]`: 0 here, 27 in core |
-| MARK-3 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[MARK-3]`: 0 here, 27 in core |
-| MARK-4 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[MARK-4]`: 0 here, 27 in core |
+| MARK-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[MARK-1]`: no identity or resolved attribute here, 0 here, 33 in core |
+| MARK-2 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[MARK-2]`: 0 here, 33 in core |
+| MARK-3 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[MARK-3]`: 0 here, 33 in core. Binding-side: this package renders no template and stamps no identity — stamping is the core's `translate_page`, reachable only through DI |
+| MARK-4 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[MARK-4]`: 0 here, 33 in core |
 | SSR-1 | n/a (profile: browser) | - | These rules constrain a browser SDK running under server rendering |
 | SSR-2 | n/a (profile: browser) | - | These rules constrain a browser SDK running under server rendering |
 | SSR-3 | n/a (profile: browser) | - | These rules constrain a browser SDK running under server rendering |
@@ -153,6 +153,7 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 | SRV-4 | n/a (architecture: this binding performs no hydration hand-off because FastAPI responses are terminal, as the spec's per-SDK table records, live if the binding ships a client entry or template integration that hydrates) | - | No client renders against a FastAPI response |
 | SRV-5 | n/a (architecture: FastAPI has no component model, so this binding renders no children to capture, live if a template-component integration is added) | - | The core's DOM walker is reachable only through the DI client, where it is the core's row |
 | SRV-6 | implemented | contract | **A locale the app resolved is served as it resolved it.** An app's own middleware, running before this one, sets `request.state.locale` (the attribute is the `state_key` wiring); the middleware hands it to the core's `resolve_request_locale(framework=…)`, which validates it and maps it to the project's form, and nothing else is consulted and no `Vary` added. `test_contract.py::test_SRV6_a_locale_the_app_resolved_is_served_whatever_else_the_request_says`: `es-ES` is served as `es-es`, a bare `es` as the project's default Spanish, and an unsupported `fr-FR` as the base — each against a conflicting URL, cookie and header. **Where nothing has resolved it,** the middleware asks the core's `resolve_request_locale` for the locale — the URL, then the locale cookie, then `Accept-Language`, then the project's base locale, each validated against the project's locales — merges the returned `Vary` into the app's own, and never writes a cookie. The URL step is whichever the app routes by: a path segment (`path_segment=`), the subdomain (`subdomain=True`) or the query parameter, the first present; with the cookie name these are wiring, and `cookie_name=None` declares that the app keeps no locale cookie. Against the double serving en-us, it-it and es-es: `test_contract.py::test_SRV6_one_url_resolves_url_then_cookie_then_header_each_validated` — the URL wins over a conflicting cookie and header with no `Vary`; a cookie wins with `Vary: Cookie`; a header alone is negotiated with `Vary` naming `Accept-Language`; an unsupported cookie falls through to the header and is not re-set; an unsupported URL locale falls through to the base. `test_SRV6_a_path_segment_the_app_routes_by_is_the_url_step` and `test_SRV6_a_subdomain_the_app_routes_by_is_the_url_step`, each against a conflicting cookie and header; `test_SRV6_vary_is_merged_into_the_apps_own`; `test_SRV6_an_app_with_no_locale_cookie_does_not_vary_on_one`. Mutations: never sending `Vary`, replacing the app's `Vary`, ignoring the path segment, ignoring the subdomain and never offering the cookie each redden their named tests. Mutation: ignoring the app's locale reddens the first case |
+| SRV-7 | implemented | n/a (pure) | Over the Python server core, the core's request scope is the seam and the middleware wires the framework to it: it opens the scope when FastAPI's request begins, renders inside it, and ends it once the final response body is sent, holding no translation state of its own. The per-request context variable carries only the request's locale, read by the core through its `LocaleSource` seam — SRV-6's locale source, not request state. Evidence: `test_SRV2_concurrent_requests_in_different_locales_see_only_their_own[/srv2/async]` and `[/srv2/sync]` (mutation: a process-global locale reddens both), and the SRV-3 order tests (mutations: never opening the scope, releasing before the body, leaving a raised request's scope open) |
 | MSG-1 | implemented | n/a (pure) | `install(app)` keeps FastAPI's own 422 body — its default handler writes it — and attaches one entry per error beside `detail`, under a configurable key — the core's `langsys_errors` by default — through the core's `attach_server_messages`. `test_messages.py::test_MSG1_fastapis_own_body_is_unchanged_and_the_entries_ride_beside_it` compares the body, request for request, with the same app answering through FastAPI's default handler; `test_MSG1_the_key_the_entries_sit_under_is_configurable`. Mutation: replacing the body with the entries alone reddens it |
 | MSG-2 | implemented | n/a (pure) | Each entry's `code` is Pydantic's own error `type` — a custom `PydanticCustomError`'s type included — passed through unchanged. `test_MSG2_code_field_and_message_are_pydantics_own`: every entry's `code`, `field` and `message` are the `type`, `loc` and `msg` of the error beside it in `detail`. `test_probes.py::test_MSG2_no_vocabulary_or_wording_of_ours_stands_in_for_pydantics` finds no code vocabulary or wording table here, with a firing control. Mutation: mapping the type onto a code of ours reddens it |
 | MSG-3 | implemented | n/a (pure) | The template is Pydantic's own sentence for the error type, from `pydantic_core`'s message templates, never reworded. A number or a date in it stays a `{name}` marker; text Pydantic writes into it — the plural `s`, a `Literal`'s choices, a pattern, a validator's own message — is written in, so it is translated with its sentence. Pydantic's sentences never name the field, so no label is written in (MSG-10). `test_MSG3_MSG9_each_template_is_pydantics_sentence_before_its_values_are_filled` (eleven failures, each its exact template and params) and `test_MSG3_text_pydantic_writes_into_its_sentence_is_written_in_so_it_is_translated_whole`. Mutation: writing numbers in instead of leaving them markers reddens 2 named tests |
@@ -189,21 +190,21 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 | GRANT-4 | n/a (profile: browser) | - | A server binding holds a key, not a grant. The core asserts, live, that it never sends `X-Write-Grant` |
 | CACHE-1 | delegated | - | Core: implemented, n/a (pure). Probe `test_ABSENCE[CACHE-1]`: no cache key built here, 0 here, 11 in core. `configure(cache=…)` passes the backend through unchanged |
 | CACHE-2 | delegated | - | Core: implemented, contract. Probe `test_ABSENCE[CACHE-2]`: no failure window here, 0 here, 3 in core. The shared client outlives every request, so the core's window does too |
-| OBS-1 | delegated | - | Core: implemented, contract. Probe `test_ABSENCE[OBS-1]`: 0 here, 11 in core. The core re-arms its once-per-session notice on `reset_write_decision()`; called per request here, the request is the session |
+| OBS-1 | delegated | - | Core: implemented, contract. Probe `test_ABSENCE[OBS-1]`: 0 here, 12 in core. The core re-arms its once-per-session notice on `reset_write_decision()`; called per request here, the request is the session |
 | WIRE-1 | delegated | - | Core: implemented, live. Probe `test_ABSENCE[WIRE-1]`: no auth header here, 0 here, 8 in core |
 | WIRE-2 | delegated | - | Core: implemented, contract. Probe `test_ABSENCE[WIRE-2]`: no response parsing here, 0 here, 1 in core |
-| WIRE-3 | delegated | - | Core: implemented, live. Probe `test_ABSENCE[WIRE-3]`: 0 here, 35 in core. The locale this package hands the core is the core resolver's own answer; lowercasing for the wire happens in the core |
+| WIRE-3 | delegated | - | Core: implemented, live. Probe `test_ABSENCE[WIRE-3]`: 0 here, 36 in core. The locale this package hands the core is the core resolver's own answer; lowercasing for the wire happens in the core |
 | WIRE-4 | delegated | - | Core: implemented, live. Probe `test_ABSENCE[WIRE-4]`: no API call of this package's own, 0 here, 13 in core. When the project's locales cannot be read, the core's resolver serves the configured base locale rather than raising |
 | WIRE-5 | implemented | n/a (pure) | `test_WIRE5_configure_redirects_the_api_base_even_after_first_use`: requests arrive at one double, then at a second after `configure()` is called again once the client has been used. `test_WIRE5_the_seam_is_findable_where_an_integrator_looks`: the README's Configuration section names `api_url` and `LANGSYS_API_URL`, and so does the `configure()` docstring. The contract tests reach the shared double through this seam. Mutation: `configure()` not rebuilding the client reddens the first |
 | CONF-1 | implemented | live | Every row whose property depends on what the API answers is proven against a server that can say no, asserting what it accepted: REG-3 and SRV-1 live; SRV-3, SRV-6 and MSG-8's evidence against the contract double, with drift for the absence. Every path: SRV-1 is proven on sync `t()`, async `at()` and DI. The mock-backed unit tests beside them are supporting evidence, not the grade |
 | CONF-2 | implemented | n/a (pure) | Every row carries a tier, and `_dev_/conformance_counts.py` rejects a tier its status cannot carry, including anything but `-` on a delegated row. The shared contract fixture is vendored by tree id (`542f57f5`) and reached through WIRE-5's seam; the one absence proven here drifts the capability and carries its control (SRV-3). `live` evidence comes from a committed, idempotent seeder |
-| CONF-3 | implemented | n/a (pure) | `_dev_/mutations.py`: 26 mutations across every implemented row that running something can break. Each must redden its named tests against a green baseline, and the tree is restored byte-for-byte afterwards; all 26 redden against core `e834170`. For delegated rows, each probe's firing control is the mutation |
+| CONF-3 | implemented | n/a (pure) | `_dev_/mutations.py`: 26 mutations across every implemented row that running something can break. Each must redden its named tests against a green baseline, and the tree is restored byte-for-byte afterwards; all 26 redden against core `17c84d2`. For delegated rows, each probe's firing control is the mutation |
 
 ---
 
 ## Gaps, ranked by cost
 
-1. **Delegated rows are only as good as the core rows they cite.** At `e834170` the core grades
+1. **Delegated rows are only as good as the core rows they cite.** At `17c84d2` the core grades
    MIG-9 `not implemented`. Those are the core's to close; these rows follow its grades.
 2. **A `{category}` or `{phrase}` placeholder cannot be passed to `t()` or `at()` as a keyword,**
    and `category=` is silently taken as the category — the placeholder stays unfilled and the
@@ -223,7 +224,7 @@ unknown or graded twice, or if a status or tier falls outside the vocabulary.
 ## Reproducing
 
 ```bash
-.venv/bin/pytest                          # 121 passed, the contract double included; live tests skip
+.venv/bin/pytest                          # 122 passed, the contract double included; live tests skip
 php artisan db:seed                       # in langsys2: (re)creates the slot-15 fixture
 .venv/bin/pytest -m integration           # 5 live; environment in tests/test_live.py
 .venv/bin/python _dev_/mutations.py       # CONF-3: every mutation must redden its named tests
@@ -234,6 +235,6 @@ The contract tests need Node 18 or later. The editable link follows `langsys-pyt
 tree; to run against the commit this file cites, prefix any command above with `PYTHONPATH`:
 
 ```bash
-mkdir -p /tmp/langsys-core && git -C ../langsys-python archive e834170 src | tar -x -C /tmp/langsys-core
+mkdir -p /tmp/langsys-core && git -C ../langsys-python archive 17c84d2 src | tar -x -C /tmp/langsys-core
 PYTHONPATH=/tmp/langsys-core/src .venv/bin/pytest
 ```
